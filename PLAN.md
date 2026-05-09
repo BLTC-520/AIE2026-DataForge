@@ -103,6 +103,11 @@ Provider boundary decision:
   - **Action:** Create an obvious imbalance, such as 90 cats and 20 dogs, with target balance metadata such as 90 cats and 80 dogs.
   - **Action:** Export pure data only. Do not export React state or UI code from this file.
 
+- [ ] **Step 1.3.1: Recover Fal AI Synthetic Mock Data**
+  - **Action:** Recover the images that were deleted in commit `7dbd4f14` (which created the deliberate imbalance).
+  - **Action:** Add these recovered images into the demo seed as `falSyntheticSamples` (or similar).
+  - **Constraint:** These must be presented to judges and hardcoded in the data as "actual synthetic images from fal ai" (never "simulated"). This exactly mirrors the real-world workflow and saves us from hitting 45-second generation limits on stage.
+
 - [x] **Step 1.4: Create pipeline state helpers (`lib/dataforge/pipeline.ts`)**
   - **Action:** Implement helpers for queued stage creation, event creation, staged delay metadata, and demo pipeline transitions.
   - **Action:** Add the new stage order: Upload, Evaluate, Labelize, Deduplicate, Balance, Re-evaluate, Export.
@@ -154,7 +159,7 @@ Provider boundary decision:
 
 - [ ] **Step B2.5: Demo timing pass (Mocked Processing)**
   - **Action:** Tune artificial staged delays (spinners and loading visuals) so the demo feels live and processing-heavy but advances predictably.
-  - **Action:** Use pre-computed, mocked data for visual audit, duplicate detection, manifest evaluation, and LLM explanation to bypass the 30+ minute real-world processing times.
+  - **Action:** Use pre-computed, mocked data for visual audit, duplicate detection, manifest evaluation, and LLM explanation to bypass the 30+ minute real-world processing times. Include the 3-second loader for the Fal AI image generation that instantly returns the recovered imbalance images.
   - **Action:** Make the whole click-through complete in under 2 minutes.
   - **Constraint:** Keep behavior strictly deterministic. The "live" pipeline is entirely simulated for the presentation and must not imply Adaption Labs read image pixels.
 
@@ -276,7 +281,8 @@ Provider boundary decision:
 - [ ] **Step 3.6: Build balancing panel (`components/dataforge/balancing-panel.tsx`)**
   - **Action:** Show balancing recommendations grouped by class.
   - **Action:** Show current count, target count, recommended weight, sampling strategy, and reason.
-  - **Action:** Make it visually clear that balancing metadata is not the same as new images.
+  - **Action:** Add a "Run Fal AI Generation" button that triggers the 3-second mocked loader and injects the recovered held-out images.
+  - **Action:** Render the generated images in a grid, each marked with a clear `✨ Fal AI` or `Synthetic` badge to prove strict data tracking to the judges.
 
 - [ ] **Step 3.7: Build export manifest button (`components/dataforge/export-manifest-button.tsx`)**
   - **Action:** Generate a JSON manifest with original samples, final labels, missing-label completions, corrected labels, duplicate removal decisions, balancing metadata, visual-audit provenance, baseline quality snapshot, and final quality snapshot.

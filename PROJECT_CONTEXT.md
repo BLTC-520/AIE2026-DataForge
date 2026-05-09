@@ -63,6 +63,8 @@ The MVP should focus on one clean dataset type: **partially labeled animal image
 
 The prepared animal subset must stay intentionally imbalanced. Do not downsample every class to the same count. Keep a bounded random sample per animal class between 20 and 100 images, with majority classes near 100 and minority classes near 20. This creates the bias and balance gap the demo is supposed to repair. Fal-generated images should be used only after the balancing plan identifies underrepresented classes and the user approves optional synthetic additions needed to move minority classes toward the target distribution.
 
+**Crucial Demo Optimization:** Generating hundreds of images takes too long for a 3-hour build and a 2-minute demo. Therefore, the images previously deleted to create the dataset imbalance (from commit `7dbd4f14`) will be recovered and injected instantly during the "Balance" stage. In the UI and the pitch, these are called **actual synthetic images from fal ai**, preserving the exact real-world workflow and data provenance (`source: "synthetic"`, `provider: "fal.ai"`) without the latency of live inference.
+
 ## 2. Core Positioning
 
 DataForge should be pitched as a **computer-vision dataset repair cockpit with an Adaption Labs-compatible manifest quality loop**, not as a replacement for Adaption Labs. Adaption Labs owns broad tabular dataset lifecycle and quality evaluation where its API supports the input shape. DataForge owns the image-specific workflow: visual label review through seeded demo truth or GPT Vision/Gemini, missing-label completion, wrong-label correction, duplicate-image review/removal, class balancing, and exportable image-manifest provenance.
@@ -660,7 +662,7 @@ Track for every dataset run:
 Hackathon cost controls & Demo Constraints:
 
 - **Strict 2-Minute Demo Rule:** Real-world CV processing takes 30+ minutes. To fit the demo format, **the entire pipeline may be mocked with pre-computed data.**
-- All backend processes must be simulated using artificial wait times, spinners, and progress visuals unless a live call has already been proven reliable. This includes manifest evaluation, vision-model label detection, duplicate detection, and re-evaluation.
+- All backend processes must be simulated using artificial wait times, spinners, and progress visuals unless a live call has already been proven reliable. This includes manifest evaluation, vision-model label detection, duplicate detection, re-evaluation, and Fal AI synthetic image generation (which will instantly load the held-out "deleted" images).
 - The demo must not imply that Adaption Labs inspected image pixels. Use seeded visual-audit results or GPT Vision/Gemini for image-specific findings.
 - Limit preview analysis to first 100 rows or 12 to 24 images.
 - Limit optional synthetic generation to 10 images per class by default.
