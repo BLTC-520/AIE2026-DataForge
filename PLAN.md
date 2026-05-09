@@ -141,10 +141,11 @@ Recommended demo dataset:
   - **Action:** Ensure Adaption final evaluation receives the clean labelized and deduplicated manifest, not stale original samples.
   - **Validation:** Manifest contains original, newly labeled, relabeled, duplicate removal, balancing, and Adaption evaluation provenance.
 
-- [ ] **Step B2.5: Demo timing pass**
-  - **Action:** Tune staged delays so the demo feels live but not slow.
+- [ ] **Step B2.5: Demo timing pass (Mocked Processing)**
+  - **Action:** Tune artificial staged delays (spinners and loading visuals) so the demo feels live and processing-heavy but advances predictably.
+  - **Action:** Use pre-computed, mocked data for all Adaption Labs evaluations, duplicate detection, and LLM labeling to bypass the 30+ minute real-world processing times.
   - **Action:** Make the whole click-through complete in under 2 minutes.
-  - **Constraint:** Keep fallback behavior deterministic so no live provider outage can break the demo.
+  - **Constraint:** Keep behavior strictly deterministic. The "live" pipeline is entirely simulated for the presentation.
 
 - [ ] **Step B2.6: Responsive and build validation**
   - **Action:** Test desktop width around 1440px.

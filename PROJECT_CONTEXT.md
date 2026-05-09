@@ -640,15 +640,14 @@ Track for every dataset run:
 - Optional number of synthetic samples generated and Fal job IDs.
 - Error messages.
 
-Hackathon cost controls:
+Hackathon cost controls & Demo Constraints:
 
+- **Strict 2-Minute Demo Rule:** Real-world CV processing takes 30+ minutes. To fit the demo format, **the entire pipeline will be mocked with pre-computed data.**
+- All backend processes (Adaption Labs evaluation, LLM label detection, deduplication, re-evaluation) must be simulated using artificial wait times, spinners, and progress visuals.
 - Limit preview analysis to first 100 rows or 12 to 24 images.
-- Use Adaption Labs `max_rows` for bounded pilot runs where applicable.
-- Use Adaption Labs `estimate=True` before larger runs where applicable.
 - Limit optional synthetic generation to 10 images per class by default.
 - Cap total optional generated images per dataset.
-- Cache demo results for the prepared dataset.
-- Keep a precomputed fallback run in Convex in case live APIs are slow.
+- Cache demo results for the prepared dataset and rely exclusively on the precomputed fallback run for the live presentation.
 
 ### 4.11 MVP vs Stretch Stack Decisions
 
