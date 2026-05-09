@@ -8,13 +8,13 @@ DataForge is a hackathon product concept for AI Engineer Singapore.
 
 The core philosophy is simple: **DataForge is a closed-loop data quality system, not a model training platform.**
 
-Most ML teams do not fail because they cannot start a training run. They fail because the dataset is quietly broken before training begins: classes are imbalanced, many samples are unlabeled, labels are inconsistent, objects are mislabeled, duplicates leak across splits, and visual diversity is too narrow. These problems usually surface late, after wasted training cycles and confusing evaluation results.
+Most ML teams do not fail because they cannot start a training run. They fail because the dataset is quietly broken before training begins: classes are imbalanced, many samples are unlabeled, labels are inconsistent, objects are mislabeled, duplicates or near-duplicates distort the dataset, duplicates leak across splits, and visual diversity is too narrow. These problems usually surface late, after wasted training cycles and confusing evaluation results.
 
 DataForge moves the quality loop earlier. A user uploads a partially labeled image dataset and describes the classifier they want to train. The system evaluates the dataset, explains missing labels, likely wrong labels, and class imbalance, proposes label completions and corrections, creates a balancing plan, and then evaluates the cleaned dataset again. The key demo artifact is the **before/after dataset quality and labelization delta**, not a trained model.
 
 This distinction matters for the hackathon. DataForge should not promise "we improved model accuracy" unless a model is actually trained and evaluated. Instead, it should prove a more realistic claim:
 
-1. The original dataset had measurable quality issues: missing labels, wrong labels, and class imbalance.
+1. The original dataset had measurable quality issues: missing labels, wrong labels, duplicate images, and class imbalance.
 2. Adaption Labs evaluation identified or scored those issues where supported and provided the primary quality signal.
 3. GPT-5.5 translated those metrics and dataset metadata into an actionable label-quality and balancing report.
 4. The user reviewed missing-label suggestions and likely mislabeled samples, then approved corrected labels.
@@ -24,12 +24,12 @@ This distinction matters for the hackathon. DataForge should not promise "we imp
 The winning thesis is that dataset curation can become an **adaptive improvement loop**:
 
 1. Evaluate the dataset.
-2. Explain missing labels, likely wrong labels, and class imbalance.
-3. Review and apply label completions and corrections.
+2. Explain missing labels, likely wrong labels, duplicate images, and class imbalance.
+3. Review and apply label completions, corrections, and duplicate removals.
 4. Balance the dataset through class weights, sampling recommendations, or optional generated/collected additions.
 5. Re-ingest the cleaned dataset.
 6. Evaluate again with Adaption Labs.
-7. Export a clean labeled dataset and report.
+7. Export a clean labeled, deduplicated dataset and report.
 
 DataForge should feel technical and credible. It should avoid the common hackathon trap of treating generated images as the product. The core value is labelization and dataset quality repair: every sample should end with a clear label status, every correction should preserve provenance, and every balancing decision should be tied to measured dataset gaps and a second Adaption Labs evaluation.
 
@@ -83,9 +83,11 @@ Primary users:
 
 Primary hackathon positioning:
 
-**DataForge is an adaptive dataset labelization loop: evaluate, explain, label, relabel, balance, re-evaluate, export.**
+**DataForge is an adaptive image dataset repair loop: evaluate, labelize, deduplicate, balance, re-evaluate, export.**
 
-The winning demo should show a deliberately imbalanced, partially labeled image dataset, run Adaption Labs evaluation, surface missing labels and likely label mistakes, apply approved labels and relabels, rebalance class weightage, run evaluation again, and display an improved quality score, label completeness score, consistency score, or balance metric. The cleaned labelized dataset and report are the climax.
+The winning demo should show a deliberately imbalanced, partially labeled image dataset, run Adaption Labs evaluation, surface missing labels, likely label mistakes, and duplicate images, apply approved labels, relabels, and duplicate removals, rebalance class weightage, run evaluation again, and display an improved quality score, label completeness score, duplicate issue count, consistency score, or balance metric. The cleaned labelized dataset and report are the climax.
+
+Adaption Labs overlap is real and should be handled explicitly. Adaption Labs owns broad Adaptive Data primitives such as dataset creation, run configuration, recipes like deduplication, evaluation, download, and export-style lifecycle operations. DataForge should position itself as a **computer-vision dataset repair cockpit powered by Adaption Labs**, not as a replacement for Adaption Labs. DataForge's value is the image-specific workflow: visual label review, missing-label completion, wrong-label correction, duplicate-image review/removal, class balancing, and an exportable image manifest with provenance.
 
 ## 3. Comprehensive User Flow & Lifecycle
 
@@ -98,6 +100,7 @@ The winning demo should show a deliberately imbalanced, partially labeled image 
 - **Label / Class:** The target category associated with a sample. For MVP, labels should map to image classification classes.
 - **Label Issue:** A suspected problem where a sample's assigned label may not match its visual content or expected class taxonomy.
 - **Missing Label:** A sample with no assigned class, empty manifest label, or unknown folder/category.
+- **Duplicate Image:** An exact or near-duplicate image that may overrepresent a class or leak across train/test splits.
 - **Suggested Label Correction:** An AI-proposed replacement label with confidence, rationale, and review status.
 - **Suggested Label Completion:** An AI-proposed label for an unlabeled sample with confidence, rationale, and review status.
 - **Relabeled Sample:** An original sample whose label was changed after user approval. This is distinct from a synthetic sample.
@@ -176,21 +179,23 @@ Edge cases:
 - **GPT-5.5 JSON invalid:** Retry once with a repair prompt, then fall back to a minimal deterministic report.
 - **No gaps detected:** Show a healthy dataset state and recommend export or targeted manual review instead of forcing optional generation.
 
-### 3.6 Phase 4: Label Completion, Relabeling, and Balancing Plan
+### 3.6 Phase 4: Label Completion, Relabeling, Deduplication, and Balancing Plan
 
 1. **Missing Label Queue:** DataForge identifies unlabeled samples and proposes labels from the allowed class taxonomy. For image classification, this can be shown as "current label: unlabeled, suggested label: cat" with confidence and rationale.
 2. **Label Issue Selection:** DataForge identifies likely mislabeled samples from Adaption Labs signals, deterministic checks, and GPT-5.5 interpretation. For image classification, this can be shown as "current label: dog, suggested label: cat" with confidence and rationale.
 3. **Human Review:** User approves, rejects, or edits suggested label completions and corrections. MVP can support one-click accept/reject for obvious issues instead of building a full annotation suite.
 4. **Labelized Manifest Update:** Approved label changes update the dataset manifest and preserve original label, final label, reviewer action, timestamp, confidence source, and reason.
-5. **Class Balance Analysis:** DataForge recalculates class counts after labelization and identifies underrepresented classes.
-6. **Balancing Plan Creation:** DataForge produces a balancing plan with current count, target count, recommended class weight, recommended sampling strategy, and optional sample additions.
-7. **Optional Addition Review:** If the team uses Fal or external collection, user can review optional prompts or collection recommendations. This is not required for the core MVP.
-8. **Convex Events:** Every label review and balancing state change is logged live: proposed, approved, rejected, manual_review, balanced, failed, complete.
+5. **Duplicate Review:** DataForge flags exact or near-duplicate images using Adaption deduplication signals where available and deterministic local checks as fallback. User can keep or exclude duplicates from export.
+6. **Class Balance Analysis:** DataForge recalculates class counts after labelization and duplicate removal, then identifies underrepresented classes.
+7. **Balancing Plan Creation:** DataForge produces a balancing plan with current count, target count, recommended class weight, recommended sampling strategy, and optional sample additions.
+8. **Optional Addition Review:** If the team uses Fal or external collection, user can review optional prompts or collection recommendations. This is not required for the core MVP.
+9. **Convex Events:** Every label review, duplicate review, and balancing state change is logged live: proposed, approved, rejected, manual_review, duplicate_removed, balanced, failed, complete.
 
 Edge cases:
 
 - **Unlabeled sample ambiguous:** Mark it for manual review instead of forcing a guessed label.
 - **Balancing would overfit minority classes:** Prefer class weights or sampling metadata over aggressive duplication.
+- **Duplicate is intentional burst capture:** Let the user keep it and preserve duplicate metadata rather than forcing removal.
 - **Optional generated image quality poor:** Allow rejection or exclude from the balanced dataset.
 - **Too many requested additions:** Cap count and explain the cap.
 - **Low-confidence label suggestion:** Keep it as a review warning and do not auto-apply the correction.
@@ -199,12 +204,13 @@ Edge cases:
 ### 3.7 Phase 5: Re-Ingest, Adapt, and Re-Evaluate
 
 1. **Labelized Dataset Assembly:** DataForge applies approved label completions and corrections to the manifest while preserving original labels for provenance.
-2. **Balanced Dataset Assembly:** DataForge attaches class weights, sampling metadata, and optional approved additions.
-3. **Adaption Labs Re-Ingest:** The clean labelized dataset is sent back into the Adaption Labs pipeline.
-4. **Adapt Stage:** Adaption Labs applies supported transformations, such as normalization, deduplication, balancing, validation, or provider-specific adaptation.
-5. **Second Evaluate Stage:** Adaption Labs evaluates the clean labelized and balanced dataset.
-6. **Improvement Delta:** The frontend compares baseline and post-repair evaluation snapshots.
-7. **Narrative Summary:** GPT-5.5 summarizes what improved, what remains weak, and what should happen next.
+2. **Deduplicated Dataset Assembly:** DataForge excludes approved duplicate removals from the export manifest while preserving duplicate provenance.
+3. **Balanced Dataset Assembly:** DataForge attaches class weights, sampling metadata, and optional approved additions.
+4. **Adaption Labs Re-Ingest:** The clean labelized and deduplicated dataset is sent back into the Adaption Labs pipeline.
+5. **Adapt Stage:** Adaption Labs applies supported transformations, such as normalization, deduplication, balancing, validation, or provider-specific adaptation.
+6. **Second Evaluate Stage:** Adaption Labs evaluates the clean labelized, deduplicated, and balanced dataset.
+7. **Improvement Delta:** The frontend compares baseline and post-repair evaluation snapshots.
+8. **Narrative Summary:** GPT-5.5 summarizes what improved, what remains weak, and what should happen next.
 
 The second evaluation is the most important proof point. The UI should make this obvious:
 
@@ -212,6 +218,7 @@ The second evaluation is the most important proof point. The UI should make this
 - Baseline class distribution versus balanced class distribution or class weights.
 - Baseline missing-label count versus final missing-label count.
 - Baseline label issue count versus remaining label issue count.
+- Baseline duplicate count versus removed or remaining duplicate count.
 - Baseline imbalance severity versus final imbalance severity.
 - Remaining recommended actions.
 - Newly labeled count, corrected label count, and affected classes.
@@ -265,7 +272,7 @@ DataForge should use a lean, hackathon-friendly architecture with one web app, C
 - **Styling:** Tailwind CSS with a dark, technical UI.
 - **Components:** shadcn/ui or lightweight custom components.
 - **Charts:** Recharts for class distribution, score trends, and before/after comparisons.
-- **Pipeline Visualization:** React Flow for a fixed, non-editable pipeline hero showing Upload -> Evaluate -> Labelize -> Balance -> Re-evaluate -> Export.
+- **Pipeline Visualization:** React Flow for a fixed, non-editable pipeline hero showing Upload -> Evaluate -> Labelize -> Deduplicate -> Balance -> Re-evaluate -> Export.
 - **Upload:** react-dropzone for file upload.
 - **Parsing:** Papa Parse for CSV, native JSON parsing, JSZip for ZIP, image metadata extraction where needed.
 - **Realtime Backend:** Convex for datasets, stage updates, events, missing labels, label issues, balancing plans, optional additions, and dashboard subscriptions.
@@ -285,7 +292,8 @@ DataForge should use a lean, hackathon-friendly architecture with one web app, C
 - **Server Route or Action: `createDataset`:** Creates Convex dataset record and stores upload metadata.
 - **Server Route or Action: `analyzeDataset`:** Runs parsing, Adaption Labs baseline evaluation, missing-label detection, label issue detection, GPT-5.5 report, and stage updates.
 - **Server Route or Action: `applyLabelDecisions`:** Applies approved label completions and corrections to the dataset manifest and sample records.
-- **Server Route or Action: `balanceDataset`:** Creates class weights, sampling metadata, and optional addition recommendations.
+- **Server Route or Action: `reviewDuplicates`:** Surfaces exact or near-duplicate images and applies approved removals to the export manifest.
+- **Server Route or Action: `balanceDataset`:** Creates class weights, sampling metadata, and optional addition recommendations after labelization and duplicate review.
 - **Server Route or Action: `reevaluateDataset`:** Sends the clean labelized dataset to Adaption Labs and writes improvement metrics.
 
 For the hackathon, server actions can be simple wrappers that call Convex mutations and provider APIs. Keep provider-specific code isolated behind adapter functions.
@@ -318,6 +326,8 @@ Stores previewable metadata for samples. For MVP, do not store every large file 
 - `corrected_label` optional string
 - `final_label` optional string
 - `label_status` optional enum: `unlabeled`, `suggested`, `newly_labeled`, `corrected`, `accepted`, `rejected`, `manual_review`
+- `duplicate_of` optional string
+- `duplicate_status` optional enum: `unique`, `suspected_duplicate`, `removed`, `kept`
 - `image_url` optional string
 - `row_preview` optional any
 - `source` enum: `original`, `synthetic`, `external`
@@ -357,6 +367,21 @@ Tracks class balance recommendations after labelization.
 - `status` enum: `proposed`, `accepted`, `rejected`, `applied`
 - `created_at` number
 - `updated_at` number
+
+#### `duplicate_issues`
+
+Tracks suspected duplicate or near-duplicate images and review decisions.
+
+- `dataset_id` id
+- `sample_id` optional id
+- `sample_key` string
+- `duplicate_of_sample_key` string
+- `similarity_score` optional number
+- `reason` string
+- `status` enum: `open`, `removed`, `kept`, `manual_review`
+- `source` enum: `adaption`, `perceptual_hash`, `file_hash`, `user`
+- `reviewed_at` optional number
+- `created_at` number
 
 #### `evaluation_snapshots`
 
@@ -438,13 +463,16 @@ The pipeline should be explicit, even if some stages are mocked during the demo.
 5. `labelize_running`: missing labels and likely wrong labels are being identified.
 6. `label_review_ready`: suggested label completions and corrections are available for user review.
 7. `labels_applied`: approved label decisions have been applied to the manifest.
-8. `balance_running`: class distribution and weightage recommendations are being calculated.
-9. `balance_ready`: class weights, sampling recommendations, and optional additions are available.
-10. `analysis_running`: GPT-5.5 report generation running.
-11. `analysis_ready`: Quality report and balancing plan available.
-12. `reevaluating`: clean labelized dataset sent back to Adaption Labs.
-13. `complete`: Improvement delta available.
-14. `error`: Terminal failure with actionable message.
+8. `dedupe_running`: duplicate and near-duplicate images are being identified.
+9. `dedupe_review_ready`: duplicate removal decisions are available for user review.
+10. `dedupe_applied`: approved duplicate removals have been applied to the export manifest.
+11. `balance_running`: class distribution and weightage recommendations are being calculated.
+12. `balance_ready`: class weights, sampling recommendations, and optional additions are available.
+13. `analysis_running`: GPT-5.5 report generation running.
+14. `analysis_ready`: Quality report and balancing plan available.
+15. `reevaluating`: clean labelized and deduplicated dataset sent back to Adaption Labs.
+16. `complete`: Improvement delta available.
+17. `error`: Terminal failure with actionable message.
 
 Every state transition should write both a `pipeline_stages` update and an `events` row. This makes the dashboard feel alive and makes debugging easier.
 
@@ -453,11 +481,12 @@ React Flow node mapping:
 - **Upload:** dataset parsed and previewed.
 - **Evaluate:** Adaption Labs baseline quality evaluation.
 - **Labelize:** missing labels, likely mislabeled samples, and suggested final labels.
+- **Deduplicate:** exact or near-duplicate image review and removal decisions.
 - **Balance:** class weights, sampling recommendations, and optional additions.
-- **Re-evaluate:** Adaption Labs clean labeled dataset evaluation.
+- **Re-evaluate:** Adaption Labs clean labeled and deduplicated dataset evaluation.
 - **Export:** downloadable manifest or final dataset package.
 
-React Flow is only a visualization layer. Convex remains the source of truth for node status, stage metrics, logs, missing labels, label issues, balancing plans, and optional generated sample records. Recharts remains responsible for quantitative charts.
+React Flow is only a visualization layer. Convex remains the source of truth for node status, stage metrics, logs, missing labels, label issues, duplicate issues, balancing plans, and optional generated sample records. Recharts remains responsible for quantitative charts.
 
 ### 4.5 Provider Adapter Architecture
 
@@ -472,6 +501,8 @@ Recommended adapters:
 - `adaptionClient.getEvaluation(datasetId)`
 - `adaptionClient.downloadDataset(datasetId)`
 - `labelAuditClient.detectMissingAndWrongLabels(datasetSummary, samplePreviews)`
+- `duplicateClient.detectDuplicates(datasetSummary, samplePreviews)`
+- `duplicateClient.applyDuplicateDecisions(datasetId, approvedDecisions)`
 - `datasetRepairClient.applyLabelDecisions(datasetId, approvedDecisions)`
 - `balanceClient.createBalancingPlan(labelizedDataset)`
 - `openaiClient.generateQualityReport(input)`
@@ -599,6 +630,7 @@ Track for every dataset run:
 - Missing-label count before and after.
 - Number of suspected label issues.
 - Number of accepted, rejected, newly labeled, corrected, and manually reviewed label decisions.
+- Number of suspected, removed, kept, and manually reviewed duplicate images.
 - Class weights and sampling recommendations.
 - Optional number of synthetic samples generated and Fal job IDs.
 - Error messages.
@@ -622,6 +654,7 @@ Hackathon cost controls:
 - OpenAI GPT-5.5 structured quality report.
 - Adaption Labs dataset creation, bounded run, evaluation polling, and baseline/final quality snapshots.
 - AI-assisted label completion and relabeling queue for partially labeled image classification datasets.
+- Duplicate image review and removal queue, using Adaption deduplication signals where available and deterministic fallback checks where needed.
 - Class balancing plan with weights, sampling recommendations, and visible before/after distribution.
 - Recharts dashboard for before/after class distribution, missing-label delta, label issue delta, and quality delta.
 - Pre-prepared demo dataset with imbalance, missing labels, and known mislabeled examples.
@@ -651,7 +684,7 @@ Hackathon cost controls:
 10. **Do not block the dashboard on long-running calls:** Write stage updates early and often so the UI remains alive.
 11. **Do not use user-uploaded secrets or tokens in provider prompts:** Keep all credentials server-side and minimal.
 12. **Do not make accuracy claims:** Claim dataset quality, labeling completeness, balance, coverage, or consistency improvement only if supported by evaluation metrics.
-13. **Do not attempt full MLOps:** The product ends at dataset evaluation, labelization, balancing, report generation, and export.
+13. **Do not attempt full MLOps:** The product ends at dataset evaluation, labelization, deduplication, balancing, report generation, and export.
 
 ### 4.13 Demo Dataset Recommendation
 

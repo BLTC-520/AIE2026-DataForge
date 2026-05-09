@@ -31,7 +31,21 @@ For DataForge, map that to:
 5. **Fetch evaluation:** use evaluation-specific calls for quality metrics rather than relying only on run status.
 6. **Export/download:** preserve the final clean labeled dataset, label provenance, and evaluation snapshots.
 
-## API Dataset Creation
+## REST API Dataset Methods
+
+Base URL used in docs:
+
+```text
+https://api.adaptionlabs.ai
+```
+
+All API requests require:
+
+```http
+Authorization: Bearer $ADAPTION_API_KEY
+```
+
+### `POST /api/v1/datasets` - Create Dataset
 
 The unified create endpoint is:
 
@@ -67,6 +81,205 @@ Other ingestion sources:
 
 - Hugging Face: `source.type = "huggingface"`, with `url` and `files`.
 - Kaggle: `source.type = "kaggle"`, with `url` and `files`.
+
+### `GET /api/v1/datasets` - List Datasets
+
+Use this for dashboards, recently created datasets, and debugging whether a dataset already exists.
+
+Query parameters:
+
+- `limit`: max 100, default 20.
+- `cursor`: previous response `next_cursor` for pagination.
+- `q`: case-insensitive dataset-name search.
+- `status`: `pending`, `running`, `succeeded`, or `failed`.
+- `sort`: `created_at`, `updated_at`, or `name`.
+- `sort_direction`: `asc` or `desc`.
+- `created_after` and `created_before`: ISO 8601 datetime filters.
+
+Response shape:
+
+- `datasets`: array with `dataset_id`, `status`, `created_at`, `updated_at`, optional `description`, optional `name`, optional `row_count`.
+- `next_cursor`: cursor for the next page, null when finished.
+
+### `GET /api/v1/datasets/{dataset_id}` - Get Dataset
+
+Use this for full dataset state and compact dashboard summaries.
+
+Important fields:
+
+- `dataset_id`
+- `name`
+- `status`: `pending`, `running`, `succeeded`, or `failed`
+- `row_count`
+- `configured_column_mapping`: `prompt`, `completion`, `context`, `chat`, or null before configuration
+- `progress`: `percent`, `processed_rows`, `total_rows`, or null when no run is active
+- `run_id`: active run ID
+- `evaluation_summary`: compact quality summary when available
+- `error.message`: failure details
+- `created_at`, `updated_at`
+
+`evaluation_summary` may include:
+
+- `score_before`
+- `score_after`
+- `grade_before`
+- `grade_after`
+- `improvement_percent`
+
+### `GET /api/v1/datasets/{dataset_id}/status` - Get Processing Status
+
+Use this for ingestion/run progress, not quality.
+
+Returns:
+
+- `dataset_id`
+- `status`: `pending`, `running`, `succeeded`, or `failed`
+- `row_count`
+- `progress`: `percent`, `processed_rows`, `total_rows`, or null
+- `error.message`, if failed
+
+Do not use this as the quality source. Use `/evaluation` for quality.
+
+### `POST /api/v1/datasets/{dataset_id}/run` - Start Run Or Estimate
+
+Starts the augmentation pipeline or validates and estimates cost when `estimate: true`.
+
+Body fields:
+
+- `column_mapping`: required for real runs, optional for estimate-only requests.
+- `estimate`: boolean. When true, returns cost/time estimate without starting a run.
+- `job_specification`: execution options.
+- `recipe_specification`: recipe toggles.
+- `brand_controls`: length, safety, hallucination mitigation, and blueprint controls.
+
+`column_mapping` fields:
+
+- `prompt`: prompt/instruction column.
+- `completion`: optional completion/target column.
+- `context`: optional array of context columns.
+- `chat`: optional conversation column, alternative to prompt/completion/context.
+
+`job_specification` fields:
+
+- `idempotency_key`: client-generated retry key. Reusing it returns the original launch response.
+- `max_rows`: maximum rows to process in that run.
+
+`recipe_specification.recipes` fields:
+
+- `deduplication`: remove near-duplicate rows.
+- `prompt_rephrase`: rephrase prompts for variety and clarity.
+- `reasoning_traces`: add reasoning traces to completions.
+
+`brand_controls` fields:
+
+- `length`: `minimal`, `concise`, `detailed`, or `extensive`.
+- `safety_categories`: categories to filter/enforce.
+- `hallucination_mitigation`: web-search grounding toggle.
+- `blueprint`: freeform system prompt for generated completions.
+
+Returns:
+
+- `estimate`: whether this was estimate-only.
+- `estimatedCreditsConsumed`
+- `estimatedMinutes`
+- `run_id`: null for estimate-only requests.
+
+For DataForge demos, always set an `idempotency_key` and usually set `max_rows` for live runs.
+
+### `GET /api/v1/datasets/{dataset_id}/evaluation` - Get Evaluation
+
+Use this for provider-measured quality.
+
+Returns:
+
+- `dataset_id`
+- `status`: `pending`, `running`, `succeeded`, `failed`, or `skipped`
+- `quality`: null until evaluation completes
+- `raw_results`: advanced payload, null until evaluation completes
+
+`quality` may include:
+
+- `score_before`: 0-10
+- `score_after`: 0-10
+- `grade_before`: A-E
+- `grade_after`: A-E
+- `improvement_percent`
+- `percentile_after`: 0-100
+
+### `GET /api/v1/datasets/{dataset_id}/download` - Download Processed Dataset
+
+Streams processed rows in the requested format.
+
+Query parameter:
+
+- `fileFormat`: optional `csv`, `json`, `jsonl`, or `parquet`. Defaults to original upload format.
+
+Important behavior from docs:
+
+- Works on datasets with status `ready` for full output.
+- Also works on failed datasets, returning successfully processed rows before the run aborted.
+- Returns 422 only when no run has ever started on the dataset.
+
+For DataForge, this means a failed run can still produce a partial recovery artifact, but the UI must label it as partial.
+
+### `POST /api/v1/datasets/{dataset_id}/publish` - Publish Dataset
+
+Publishes to Hugging Face or Kaggle but currently returns `501` and is not implemented.
+
+Do not include publish in the MVP path. Use DataForge's own export manifest/download instead.
+
+Body fields:
+
+- `target`: `huggingface` or `kaggle`.
+- `target_spec`: target-specific config.
+
+## REST Upload Subresource Methods
+
+Adaption currently documents two upload flows. Prefer the unified `POST /api/v1/datasets` file-source flow when possible because it creates a dataset and returns `upload_instructions`. The older/direct upload subresource flow is still useful to understand.
+
+### `POST /api/v1/datasets/upload/initiate`
+
+Initiates file upload and returns a presigned S3 `upload_url`.
+
+Body fields:
+
+- `name`
+- `file_format`: `csv`, `json`, `jsonl`, or `parquet`
+
+Returns:
+
+- `upload_url`
+
+### `POST /api/v1/datasets/upload/complete`
+
+Completes a direct upload and creates/triggers dataset processing.
+
+Body fields:
+
+- `name`
+- `file_format`
+- `file_size_bytes`
+- `s3_key`: from upload initiate/presigned URL response
+
+Returns:
+
+- `dataset_id`
+
+### `POST /api/v1/datasets/{dataset_id}/upload/complete`
+
+Completes a file upload after using `POST /api/v1/datasets` with `source.type = "file"`.
+
+Body fields:
+
+- `file_size_bytes`
+- `sha256`: optional hex digest for integrity verification
+
+Returns:
+
+- `dataset_id`
+- `status`, commonly `processing` after upload completion
+
+For DataForge, use this after PUT-ing the manifest bytes to the presigned upload URL from `POST /api/v1/datasets`.
 
 ## SDK Mental Model
 
@@ -153,9 +366,12 @@ When evaluation succeeds, `quality` may include:
 
 - `score_before`
 - `score_after`
-- letter grades
+- `grade_before`
+- `grade_after`
 - `improvement_percent`
 - `percentile_after`
+
+REST `/evaluation` also returns `raw_results`. Preserve it in Convex or export metadata for debugging instead of flattening away provider detail.
 
 `datasets.get(dataset_id)` may include `evaluation_summary` after evaluation finishes. `get_status` focuses on ingestion/run progress and should not be treated as the quality source.
 
@@ -221,6 +437,30 @@ For DataForge MVP:
 - Prefer 50 to 200 rows for the live demo unless API latency is already proven.
 - Cache or seed a fallback evaluation snapshot for the prepared demo dataset.
 
+## Deduplication
+
+Adaption's `datasets.run` supports a recipe toggle:
+
+```python
+recipe_specification = {
+    "recipes": {
+        "deduplication": True
+    }
+}
+```
+
+This means duplicate handling is an Adaption capability, not something DataForge should claim as novel infrastructure.
+
+For DataForge:
+
+- Use Adaption deduplication when available.
+- Show duplicate findings as part of the image dataset repair cockpit.
+- Let the user approve exclusion of duplicate image rows before final export.
+- Preserve duplicate decisions in the manifest: `duplicate_of`, `duplicate_status`, and `removed_from_export`.
+- Keep deterministic local perceptual-hash or filename/hash checks as fallback if live Adaption deduplication is unavailable.
+
+Position duplicate removal as: **DataForge makes Adaption duplicate signals actionable for image datasets through visual review and export controls.**
+
 ## Preferences, Safety, And Controls
 
 Adaption `brand_controls` can include:
@@ -275,18 +515,69 @@ export type AdaptionDatasetCreateInput = {
   fileFormat: "csv" | "json" | "jsonl" | "parquet";
 };
 
+export type AdaptionUploadInstructions = {
+  method: string;
+  s3Key?: string;
+  url: string;
+};
+
+export type AdaptionDataset = {
+  datasetId: string;
+  name?: string;
+  status: "pending" | "running" | "succeeded" | "failed" | string;
+  rowCount?: number;
+  runId?: string;
+  configuredColumnMapping?: unknown;
+  evaluationSummary?: AdaptionEvaluationQuality;
+  progress?: {
+    percent?: number;
+    processedRows?: number;
+    totalRows?: number;
+  };
+  error?: { message: string } | null;
+  raw: unknown;
+};
+
 export type AdaptionEvaluationQuality = {
   scoreBefore?: number;
   scoreAfter?: number;
+  gradeBefore?: string;
+  gradeAfter?: string;
   improvementPercent?: number;
   percentileAfter?: number;
   raw: unknown;
 };
 
+export type AdaptionRunOptions = {
+  columnMapping: {
+    prompt?: string;
+    completion?: string;
+    context?: string[];
+    chat?: string;
+  };
+  estimate?: boolean;
+  maxRows?: number;
+  idempotencyKey?: string;
+  recipes?: {
+    deduplication?: boolean;
+    promptRephrase?: boolean;
+    reasoningTraces?: boolean;
+  };
+  brandControls?: {
+    length?: "minimal" | "concise" | "detailed" | "extensive";
+    safetyCategories?: string[];
+    hallucinationMitigation?: boolean;
+    blueprint?: string;
+  };
+};
+
 export const adaptionClient = {
   createDataset,
+  completeDatasetUpload,
   uploadManifest,
   runDataset,
+  listDatasets,
+  getDataset,
   getStatus,
   getEvaluation,
   downloadDataset,
@@ -296,10 +587,39 @@ export const adaptionClient = {
 Recommended DataForge logical operations:
 
 - `createDatasetFromManifest(manifestFile)`
-- `runLabelingEvaluation(datasetId, { maxRows, estimate })`
+- `completeManifestUpload(datasetId, { fileSizeBytes, sha256 })`
+- `runLabelingEvaluation(datasetId, { maxRows, estimate, idempotencyKey })`
+- `runDeduplicationEvaluation(datasetId, { maxRows, estimate, idempotencyKey })`
 - `pollEvaluation(datasetId)`
 - `extractQualityMetrics(evaluation)`
 - `downloadCleanDataset(datasetId)`
+
+## DataForge Positioning Against Adaption Labs
+
+Adaption Labs already owns broad dataset primitives: ingest, run/adapt, recipes like deduplication, evaluate, download, and eventually publish. DataForge should not position itself as a general Adaptive Data clone.
+
+DataForge should position as a narrow application layer:
+
+- Image dataset labeling cockpit.
+- Missing-label and wrong-label review queue.
+- Visual duplicate review and removal flow.
+- Class balancing plan for image classifiers.
+- Clean labeled manifest export with provenance.
+- Adaption-powered before/after quality proof.
+
+If a feature is directly supported by Adaption, DataForge's value is the **computer-vision-specific UX and workflow** around it, not the underlying capability.
+
+Use this language:
+
+> DataForge is a computer-vision dataset repair cockpit powered by Adaption Labs evaluation and dataset processing.
+
+Avoid this language:
+
+> DataForge is an Adaptive Data platform.
+
+> DataForge replaces Adaption Labs.
+
+> DataForge has its own general dataset adaptation engine.
 
 ## Demo-Safe Fallback Rules
 
@@ -307,6 +627,8 @@ Recommended DataForge logical operations:
 - If upload or polling times out, keep the dashboard live and label the snapshot as fallback.
 - If evaluation returns partial metrics, show only available metrics and mark missing metrics as unavailable.
 - If live Adaption metrics conflict with deterministic parser metrics, show both with separate source labels.
+- If `/publish` returns 501, hide or disable publish and use local/DataForge export.
+- If `/download` succeeds on a failed dataset, label output as partial recovery.
 - Never claim trained model accuracy improvement. Claim dataset quality, labeling completeness, balance, consistency, and provenance improvement.
 
 ## DataForge-Specific Output Contract

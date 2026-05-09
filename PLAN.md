@@ -8,9 +8,10 @@ The product target is a credible, demo-safe loop:
 2. Evaluate dataset quality.
 3. Detect likely label mistakes.
 4. Approve relabeling fixes.
-5. Balance class weightage through class weights, sampling recommendations, or optional additions.
-6. Re-evaluate the clean labeled dataset with Adaption Labs.
-7. Export the clean labelized dataset, manifest, and report.
+5. Detect and remove duplicate or near-duplicate images.
+6. Balance class weightage through class weights, sampling recommendations, or optional additions.
+7. Re-evaluate the clean labeled dataset with Adaption Labs.
+8. Export the clean labelized dataset, manifest, and report.
 
 ## Parallel Work Rules
 
@@ -59,19 +60,19 @@ The product target is a credible, demo-safe loop:
   - **Action:** Keep new files small and named by feature so ownership is obvious.
 
 - [ ] **Step 1.2: Define shared TypeScript contracts (`lib/dataforge/types.ts`)**
-  - **Action:** Define `StageStatus`, `PipelineStage`, `SampleSource`, `DatasetSample`, `DatasetMetrics`, `ClassDistribution`, `LabelIssue`, `LabelDecisionAction`, `BalancingPlan`, `AdaptionEvaluationSnapshot`, `PipelineEvent`, `QualityReport`, and `ExportManifest`.
+  - **Action:** Define `StageStatus`, `PipelineStage`, `SampleSource`, `DatasetSample`, `DatasetMetrics`, `ClassDistribution`, `LabelIssue`, `DuplicateIssue`, `LabelDecisionAction`, `BalancingPlan`, `AdaptionEvaluationSnapshot`, `PipelineEvent`, `QualityReport`, and `ExportManifest`.
   - **Action:** Include labelization fields in `DatasetSample`: `originalLabel`, `currentLabel`, `finalLabel`, `labelStatus`, `labelConfidence`, `labelReason`, and `qualityFlags`.
-  - **Action:** Include balancing fields: `classWeight`, `samplingStrategy`, and optional provenance for generated or externally added samples.
+  - **Action:** Include duplicate and balancing fields: `duplicateOf`, `duplicateStatus`, `classWeight`, `samplingStrategy`, and optional provenance for generated or externally added samples.
   - **Constraint:** Types should support the demo without requiring Convex, Fal, OpenAI, or Adaption Labs keys.
 
 - [ ] **Step 1.3: Create deterministic demo seed (`lib/dataforge/demo-data.ts`)**
   - **Action:** Move class distributions, baseline metrics, final metrics, stage definitions, and seeded animal samples into this file.
-  - **Action:** Include 15 to 30 missing-label samples and 5 to 10 known label issues such as cat images assigned to dogs, fox images assigned to dogs, and owl images assigned to birds.
+  - **Action:** Include 15 to 30 missing-label samples, 5 to 10 known label issues such as cat images assigned to dogs, and 5 to 10 duplicate or near-duplicate image records.
   - **Action:** Export pure data only. Do not export React state or UI code from this file.
 
 - [ ] **Step 1.4: Create pipeline state helpers (`lib/dataforge/pipeline.ts`)**
   - **Action:** Implement helpers for queued stage creation, event creation, staged delay metadata, and demo pipeline transitions.
-  - **Action:** Add the new stage order: Upload, Evaluate, Labelize, Balance, Re-evaluate, Export.
+  - **Action:** Add the new stage order: Upload, Evaluate, Labelize, Deduplicate, Balance, Re-evaluate, Export.
   - **Constraint:** Keep timing deterministic so the live demo is repeatable.
 
 - [ ] **Step 1.5: Extract the page shell (`components/dataforge/dataforge-demo-app.tsx`)**
@@ -80,7 +81,7 @@ The product target is a credible, demo-safe loop:
   - **Constraint:** Brian owns this file until final integration is complete.
 
 - [ ] **Step 1.6: Create integration slots for parallel features**
-  - **Action:** Add placeholder imports or placeholder components for `LabelAuditPanel`, `QualityReportPanel`, `BalancingPanel`, `DatasetExplorer`, and `ExportManifestButton`.
+  - **Action:** Add placeholder imports or placeholder components for `LabelAuditPanel`, `DuplicateReviewPanel`, `QualityReportPanel`, `BalancingPanel`, `DatasetExplorer`, and `ExportManifestButton`.
   - **Action:** Pass props using shared types only, not feature-specific internal types.
   - **Dependency:** Real components arrive from Bazel and Joseph later.
 
@@ -99,7 +100,7 @@ The product target is a credible, demo-safe loop:
 
 *Depends on: Brian Step 1.2 shared types.*
 
-*Owned files: `components/dataforge/label-audit-panel.tsx`, `components/dataforge/label-audit-panel.module.css`, `components/dataforge/dataset-explorer.tsx`, `components/dataforge/dataset-explorer.module.css`, `lib/dataforge/label-audit.ts`.*
+*Owned files: `components/dataforge/label-audit-panel.tsx`, `components/dataforge/label-audit-panel.module.css`, `components/dataforge/duplicate-review-panel.tsx`, `components/dataforge/duplicate-review-panel.module.css`, `components/dataforge/dataset-explorer.tsx`, `components/dataforge/dataset-explorer.module.css`, `lib/dataforge/label-audit.ts`, `lib/dataforge/duplicates.ts`.*
 
 - [ ] **Step 2.1: Implement label audit helper (`lib/dataforge/label-audit.ts`)**
   - **Action:** Export `getOpenLabelIssues(samples, labelIssues)`.
@@ -107,6 +108,12 @@ The product target is a credible, demo-safe loop:
   - **Action:** Export `applyLabelDecisions(samples, actions)` for both missing-label completions and wrong-label corrections.
   - **Action:** Export `summarizeLabelIssues(labelIssues)` with counts for missing, corrected, newly labeled, accepted, rejected, and manual review.
   - **Constraint:** Use pure functions. Do not import React. Do not mutate input arrays.
+
+- [ ] **Step 2.1.1: Implement duplicate helper (`lib/dataforge/duplicates.ts`)**
+  - **Action:** Export `getOpenDuplicateIssues(samples, duplicateIssues)`.
+  - **Action:** Export `applyDuplicateDecisions(samples, actions)`.
+  - **Action:** Export `summarizeDuplicateIssues(duplicateIssues)` with counts for suspected, removed, kept, and manual review.
+  - **Constraint:** Use Adaption deduplication output where available, but support deterministic seeded fallback data for the demo.
 
 - [ ] **Step 2.2: Build label review UI (`components/dataforge/label-audit-panel.tsx`)**
   - **Action:** Show current label, suggested final label, issue type, confidence, reason, and sample scenario.
@@ -118,10 +125,15 @@ The product target is a credible, demo-safe loop:
   - **Action:** Display missing labels, suspected wrong labels, accepted completions, accepted corrections, rejected suggestions, and remaining review count.
   - **Action:** Make the demo story obvious: "24 missing labels, 7 suspected mislabels, 26 approved, 5 manual review".
 
+- [ ] **Step 2.3.1: Build duplicate review UI (`components/dataforge/duplicate-review-panel.tsx`)**
+  - **Action:** Show suspected duplicate pairs with sample IDs, current/final labels, similarity reason, and source.
+  - **Action:** Provide Remove Duplicate, Keep Both, and Manual Review actions.
+  - **Action:** Make it clear duplicate removal affects export, not source image deletion.
+
 - [ ] **Step 2.4: Build dataset explorer with label provenance (`components/dataforge/dataset-explorer.tsx`)**
   - **Action:** Support filters for class, source, and label status.
   - **Action:** Show original label, current label, final label, and correction/completion reason when changed.
-  - **Action:** Show `Unlabeled`, `Newly labeled`, `Relabeled`, `Accepted`, and `Manual Review` badges.
+  - **Action:** Show `Unlabeled`, `Newly labeled`, `Relabeled`, `Duplicate`, `Removed`, `Accepted`, and `Manual Review` badges.
   - **Constraint:** This component owns the explorer table so Joseph does not edit it.
 
 - [ ] **Step 2.5: Style label audit and explorer via CSS modules only**
@@ -150,11 +162,13 @@ The product target is a credible, demo-safe loop:
 - [ ] **Step 3.0: Use the Adaption Labs skill**
   - **Action:** Activate `adaptionlabs` before implementing the adapter or report flow.
   - **Action:** Treat Adaption Labs as the quality authority and keep fallback metrics clearly labeled.
+  - **Action:** Use Adaption's `deduplication` recipe where available, but position DataForge as the image duplicate review UX, not the underlying deduplication engine.
 
 - [ ] **Step 3.1: Implement Adaption adapter contract (`lib/dataforge/adaption.ts`)**
   - **Action:** Export `createDatasetFromManifest(manifest)` for the `POST /api/v1/datasets` file-source flow.
   - **Action:** Export `uploadManifest(uploadInstructions, file)` for presigned upload instructions.
   - **Action:** Export `runDataset(datasetId, columnMapping, options)` with support for `maxRows` and `estimate`.
+  - **Action:** Support recipe toggles including `deduplication`, `prompt_rephrase`, and `reasoning_traces`.
   - **Action:** Export `pollEvaluation(datasetId)` and `normalizeEvaluation(raw)`.
   - **Action:** Include a deterministic `mockAdaptionClient` fallback when API keys are absent.
   - **Constraint:** Do not call Adaption directly from React components. Keep provider access behind adapter functions or server actions.
@@ -167,14 +181,14 @@ The product target is a credible, demo-safe loop:
 
 - [ ] **Step 3.3: Implement balancing helpers (`lib/dataforge/balancing.ts`)**
   - **Action:** Export `createBalancingPlan(samples)`.
-  - **Action:** Export class-level recommendations with current count, target count, class weight, and sampling strategy.
+  - **Action:** Export class-level recommendations with current count after duplicate removal, target count, class weight, and sampling strategy.
   - **Action:** Strategies should include `keep`, `downsample`, `upsample`, `collect_more`, and optional `generate`.
   - **Constraint:** Do not represent class weights as new real samples.
 
 - [ ] **Step 3.4: Build quality report panel (`components/dataforge/quality-report-panel.tsx`)**
   - **Action:** Show measured metrics separately from GPT-5.5 inferred recommendations.
   - **Action:** Include missing-label and relabeling language after Bazel's decisions are available: newly labeled samples, corrected labels, and remaining manual review risk.
-  - **Action:** Show quality, balance, completeness, consistency, missing-label delta, and label issue delta.
+  - **Action:** Show quality, balance, completeness, consistency, missing-label delta, label issue delta, and duplicate issue delta.
 
 - [ ] **Step 3.5: Build before/after chart (`components/dataforge/distribution-chart.tsx`)**
   - **Action:** Render original versus final labelized class distribution.
@@ -187,13 +201,13 @@ The product target is a credible, demo-safe loop:
   - **Action:** Make it visually clear that balancing metadata is not the same as new images.
 
 - [ ] **Step 3.7: Build export manifest button (`components/dataforge/export-manifest-button.tsx`)**
-  - **Action:** Generate a JSON manifest with original samples, final labels, missing-label completions, corrected labels, balancing metadata, Adaption baseline metrics, and Adaption final metrics.
+  - **Action:** Generate a JSON manifest with original samples, final labels, missing-label completions, corrected labels, duplicate removal decisions, balancing metadata, Adaption baseline metrics, and Adaption final metrics.
   - **Action:** Preserve label decision provenance in exported records.
   - **Constraint:** Component receives final dataset state via props. It does not recompute global state.
 
 - [ ] **Step 3.8: Local validation**
   - **Action:** Run `npm run build`.
-  - **Validation:** Exported JSON includes `originalLabel`, `finalLabel`, `labelStatus`, `labelReason`, class weights, sampling strategy, and before/after Adaption metrics.
+  - **Validation:** Exported JSON includes `originalLabel`, `finalLabel`, `labelStatus`, `labelReason`, `duplicateStatus`, class weights, sampling strategy, and before/after Adaption metrics.
 
 ---
 
@@ -207,12 +221,12 @@ The product target is a credible, demo-safe loop:
 
 - [ ] **Step 4.1: Import completed feature components into the app shell**
   - **Action:** Wire `LabelAuditPanel` into the pipeline after baseline evaluation.
-  - **Action:** Wire `QualityReportPanel`, `DistributionChart`, `BalancingPanel`, `DatasetExplorer`, and `ExportManifestButton` into the dashboard.
+  - **Action:** Wire `QualityReportPanel`, `DistributionChart`, `DuplicateReviewPanel`, `BalancingPanel`, `DatasetExplorer`, and `ExportManifestButton` into the dashboard.
   - **Constraint:** Keep `app/page.tsx` thin. Use `DataForgeDemoApp` for orchestration.
 
-- [ ] **Step 4.2: Add the labelization and balancing stages to the live pipeline**
-  - **Action:** Update the stage flow to run Upload, Evaluate, Labelize, Balance, Re-evaluate, Export.
-  - **Action:** Add events such as `labelize.started`, `missing_label.detected`, `label_issue.detected`, `label_decision.approved`, `balance_plan.created`, and `labelize.complete`.
+- [ ] **Step 4.2: Add the labelization, deduplication, and balancing stages to the live pipeline**
+  - **Action:** Update the stage flow to run Upload, Evaluate, Labelize, Deduplicate, Balance, Re-evaluate, Export.
+  - **Action:** Add events such as `labelize.started`, `missing_label.detected`, `label_issue.detected`, `label_decision.approved`, `duplicate.detected`, `duplicate.removed`, `balance_plan.created`, and `labelize.complete`.
   - **Validation:** The UI can pause after labelization so the presenter can approve completions/corrections before continuing.
 
 - [ ] **Step 4.3: Connect approved label decisions to downstream metrics**
@@ -220,10 +234,11 @@ The product target is a credible, demo-safe loop:
   - **Action:** Make class distribution, missing-label counts, and label issue counts change after approvals.
   - **Constraint:** Do not auto-apply label decisions on page load. The user must approve them.
 
-- [ ] **Step 4.4: Connect balancing and Adaption final evaluation to labelized data**
-  - **Action:** Run Joseph's balancing helpers only after label review.
-  - **Action:** Ensure Adaption final evaluation receives the clean labelized manifest, not stale original samples.
-  - **Validation:** Manifest contains original, newly labeled, relabeled, balancing, and Adaption evaluation provenance.
+- [ ] **Step 4.4: Connect duplicate review, balancing, and Adaption final evaluation to labelized data**
+  - **Action:** Run duplicate review after label review and before balancing.
+  - **Action:** Run Joseph's balancing helpers only after label and duplicate decisions are applied.
+  - **Action:** Ensure Adaption final evaluation receives the clean labelized and deduplicated manifest, not stale original samples.
+  - **Validation:** Manifest contains original, newly labeled, relabeled, duplicate removal, balancing, and Adaption evaluation provenance.
 
 - [ ] **Step 4.5: Demo timing pass**
   - **Action:** Tune staged delays so the demo feels live but not slow.
@@ -249,12 +264,12 @@ The product target is a credible, demo-safe loop:
 *Owned files: `docs/slides-outline.md`, `docs/demo-script.md`, `docs/video-shot-list.md`, final deck/video files outside the code path.*
 
 - [ ] **Step 5.1: Build the pitch narrative**
-  - **Action:** Frame the problem as broken datasets before training: class imbalance, missing labels, and wrong labels.
+  - **Action:** Frame the problem as broken datasets before training: class imbalance, missing labels, wrong labels, and duplicates.
   - **Action:** State the thesis: DataForge is a closed-loop dataset repair cockpit, not a model training platform.
   - **Action:** Keep the story centered on before/after dataset quality delta.
 
 - [ ] **Step 5.2: Create the demo script (`docs/demo-script.md`)**
-  - **Action:** Script the exact click path: load dataset, analyze with Adaption Labs, approve missing-label completions, approve relabels, review balancing plan, re-evaluate, export.
+  - **Action:** Script the exact click path: load dataset, analyze with Adaption Labs, approve missing-label completions, approve relabels, remove duplicates, review balancing plan, re-evaluate, export.
   - **Action:** Include one memorable line for the labeling feature: "A cat in the dog folder quietly poisons training before the model ever starts."
   - **Action:** Include sponsor mentions: Adaption Labs for dataset quality evaluation, GPT-5.5 for explanation and structured report, Convex-style live dashboard visibility, and optional Fal only if used for stretch additions.
 
@@ -262,7 +277,7 @@ The product target is a credible, demo-safe loop:
   - **Action:** Slide 1: DataForge one-liner.
   - **Action:** Slide 2: The data quality problem.
   - **Action:** Slide 3: Closed-loop workflow.
-  - **Action:** Slide 4: Demo dataset with imbalance, missing labels, and mislabels.
+  - **Action:** Slide 4: Demo dataset with imbalance, missing labels, mislabels, and duplicates.
   - **Action:** Slide 5: Before/after metrics.
   - **Action:** Slide 6: Architecture and Adaption Labs integration.
   - **Action:** Slide 7: Why it matters and next steps.
@@ -270,7 +285,7 @@ The product target is a credible, demo-safe loop:
 - [ ] **Step 5.4: Record video shot list (`docs/video-shot-list.md`)**
   - **Action:** Capture the initial dashboard idle state.
   - **Action:** Capture baseline Adaption evaluation and label audit results.
-  - **Action:** Capture approving a missing label and a mislabeled cat/dog correction.
+  - **Action:** Capture approving a missing label, a mislabeled cat/dog correction, and a duplicate removal.
   - **Action:** Capture the balancing plan appearing.
   - **Action:** Capture before/after quality delta, clean dataset report, and exported manifest.
 
@@ -290,10 +305,15 @@ The product target is a credible, demo-safe loop:
   - **Consumed by:** Brian.
   - **Expected shape:** `samples`, `labelIssues`, `disabled`, `onApprove(issueId)`, `onReject(issueId)`, `onManualReview(issueId)`, `onEditLabel(issueId, finalLabel)`.
 
+- [ ] **Contract A2: `DuplicateReviewPanel` props**
+  - **Provided by:** Bazel.
+  - **Consumed by:** Brian.
+  - **Expected shape:** `samples`, `duplicateIssues`, `disabled`, `onRemove(issueId)`, `onKeep(issueId)`, `onManualReview(issueId)`.
+
 - [ ] **Contract B: label decision helpers**
   - **Provided by:** Bazel.
   - **Consumed by:** Brian and Joseph through orchestrated props.
-  - **Expected functions:** `applyLabelDecisions`, `summarizeLabelIssues`, `getMissingLabelIssues`.
+  - **Expected functions:** `applyLabelDecisions`, `summarizeLabelIssues`, `getMissingLabelIssues`, `applyDuplicateDecisions`, `summarizeDuplicateIssues`.
 
 - [ ] **Contract C: quality and distribution helpers**
   - **Provided by:** Joseph.
@@ -308,7 +328,7 @@ The product target is a credible, demo-safe loop:
 - [ ] **Contract E: export manifest button**
   - **Provided by:** Joseph.
   - **Consumed by:** Brian.
-  - **Expected props:** final samples, label issues, balancing plan, baseline Adaption metrics, final Adaption metrics, training intent, quality report.
+  - **Expected props:** final samples, label issues, duplicate issues, balancing plan, baseline Adaption metrics, final Adaption metrics, training intent, quality report.
 
 - [ ] **Contract F: Adaption adapter**
   - **Provided by:** Joseph.
@@ -325,7 +345,7 @@ The product target is a credible, demo-safe loop:
   - **Files:** `app/page.tsx`, `app/layout.tsx`, `styles.css`, `package.json`, `package-lock.json`, `README.md`, `components/dataforge/dataforge-demo-app.tsx`, `lib/dataforge/types.ts`, `lib/dataforge/demo-data.ts`, `lib/dataforge/pipeline.ts`.
 
 - [ ] **Bazel owns label audit and explorer files**
-  - **Files:** `components/dataforge/label-audit-panel.tsx`, `components/dataforge/label-audit-panel.module.css`, `components/dataforge/dataset-explorer.tsx`, `components/dataforge/dataset-explorer.module.css`, `lib/dataforge/label-audit.ts`.
+  - **Files:** `components/dataforge/label-audit-panel.tsx`, `components/dataforge/label-audit-panel.module.css`, `components/dataforge/duplicate-review-panel.tsx`, `components/dataforge/duplicate-review-panel.module.css`, `components/dataforge/dataset-explorer.tsx`, `components/dataforge/dataset-explorer.module.css`, `lib/dataforge/label-audit.ts`, `lib/dataforge/duplicates.ts`.
 
 - [ ] **Joseph owns Adaption, balancing, report, and export files**
   - **Files:** `components/dataforge/quality-report-panel.tsx`, `components/dataforge/quality-report-panel.module.css`, `components/dataforge/distribution-chart.tsx`, `components/dataforge/distribution-chart.module.css`, `components/dataforge/balancing-panel.tsx`, `components/dataforge/balancing-panel.module.css`, `components/dataforge/export-manifest-button.tsx`, `lib/dataforge/adaption.ts`, `lib/dataforge/metrics.ts`, `lib/dataforge/balancing.ts`, `lib/dataforge/export.ts`.
@@ -340,22 +360,25 @@ The product target is a credible, demo-safe loop:
 *Objective: Know when the build is good enough to present.*
 
 - [ ] **Acceptance 1: Dataset load works**
-  - **Validation:** Clicking Load Demo Animal Dataset shows classes, sample count, missing-label count, and seeded label issue count.
+  - **Validation:** Clicking Load Demo Animal Dataset shows classes, sample count, missing-label count, duplicate count, and seeded label issue count.
 
 - [ ] **Acceptance 2: Baseline evaluation works**
-  - **Validation:** Clicking Analyze Dataset shows baseline Adaption quality, balance, completeness, consistency, missing-label, and label issue metrics.
+  - **Validation:** Clicking Analyze Dataset shows baseline Adaption quality, balance, completeness, consistency, missing-label, duplicate, and label issue metrics.
 
 - [ ] **Acceptance 3: Label audit works**
   - **Validation:** User can approve at least one missing-label completion and one obvious mislabeled sample while original labels remain preserved.
 
-- [ ] **Acceptance 4: Balancing plan works**
+- [ ] **Acceptance 4: Duplicate review works**
+  - **Validation:** User can remove at least one duplicate image from export while preserving duplicate provenance.
+
+- [ ] **Acceptance 5: Balancing plan works**
   - **Validation:** The app shows deterministic class weights or sampling recommendations for foxes, owls, and low-light wildlife without pretending they are real images.
 
-- [ ] **Acceptance 5: Re-evaluation works**
-  - **Validation:** Before/after cards show improved labeling completeness, balance, label issue count, or Adaption quality score.
+- [ ] **Acceptance 6: Re-evaluation works**
+  - **Validation:** Before/after cards show improved labeling completeness, duplicate count, balance, label issue count, or Adaption quality score.
 
-- [ ] **Acceptance 6: Export works**
-  - **Validation:** Exported JSON contains training intent, original labels, final labels, newly labeled samples, corrected labels, balancing metadata, quality report, and Adaption evaluation snapshots.
+- [ ] **Acceptance 7: Export works**
+  - **Validation:** Exported JSON contains training intent, original labels, final labels, newly labeled samples, corrected labels, duplicate removals, balancing metadata, quality report, and Adaption evaluation snapshots.
 
-- [ ] **Acceptance 7: The pitch is honest**
+- [ ] **Acceptance 8: The pitch is honest**
   - **Validation:** The team says DataForge improves dataset readiness, not trained model accuracy.
