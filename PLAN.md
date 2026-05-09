@@ -247,7 +247,7 @@ Provider boundary decision:
   - **Action:** Treat Adaption Labs as a manifest-level quality provider where its API supports the input shape and keep fallback metrics clearly labeled.
   - **Action:** Do not present Adaption Labs as the source of image-pixel understanding or image duplicate detection.
 
-- [ ] **Step 3.1: Implement Adaption adapter contract (`lib/dataforge/adaption.ts`)**
+- [x] **Step 3.1: Implement Adaption adapter contract (`lib/dataforge/adaption.ts`)**
   - **Action:** Export `createDatasetFromManifest(manifest)` for the `POST /api/v1/datasets` file-source flow using a normalized CSV/JSON repair manifest, not raw image input.
   - **Action:** Export `uploadManifest(uploadInstructions, file)` for presigned upload instructions.
   - **Action:** Export `runDataset(datasetId, columnMapping, options)` with support for `maxRows` and `estimate`.
@@ -256,40 +256,40 @@ Provider boundary decision:
   - **Action:** Include a deterministic `mockAdaptionClient` fallback when API keys are absent, endpoints are unstable, or Adaption cannot evaluate the image-native input directly.
   - **Constraint:** Do not call Adaption directly from React components. Keep provider access behind adapter functions or server actions.
 
-- [ ] **Step 3.2: Implement metrics helpers (`lib/dataforge/metrics.ts`)**
+- [x] **Step 3.2: Implement metrics helpers (`lib/dataforge/metrics.ts`)**
   - **Action:** Export `calculateDistribution(samples)`.
   - **Action:** Export `calculateBalanceScore(distribution)` for deterministic fallback display.
   - **Action:** Export `buildImprovementDelta(baseline, labelizedOrBalanced)`.
   - **Constraint:** Clearly separate deterministic fallback metrics from provider metrics.
 
-- [ ] **Step 3.3: Implement balancing helpers (`lib/dataforge/balancing.ts`)**
+- [x] **Step 3.3: Implement balancing helpers (`lib/dataforge/balancing.ts`)**
   - **Action:** Export `createBalancingPlan(samples)`.
   - **Action:** Export class-level recommendations with current count after duplicate removal, target count, class weight, and sampling strategy.
   - **Action:** Strategies should include `keep`, `downsample`, `upsample`, `collect_more`, and optional `generate`.
   - **Constraint:** Do not represent class weights as new real samples.
 
-- [ ] **Step 3.4: Build quality report panel (`components/dataforge/quality-report-panel.tsx`)**
+- [x] **Step 3.4: Build quality report panel (`components/dataforge/quality-report-panel.tsx`)**
   - **Action:** Show measured metrics separately from GPT-5.5 inferred recommendations and label every metric source: Adaption manifest evaluation, deterministic parser metric, seeded demo metric, or GPT Vision/Gemini estimate.
   - **Action:** Include missing-label and relabeling language after Bazel's decisions are available: newly labeled samples, corrected labels, and remaining manual review risk.
   - **Action:** Show quality, balance, completeness, consistency, missing-label delta, label issue delta, and duplicate issue delta.
 
-- [ ] **Step 3.5: Build before/after chart (`components/dataforge/distribution-chart.tsx`)**
+- [x] **Step 3.5: Build before/after chart (`components/dataforge/distribution-chart.tsx`)**
   - **Action:** Render original versus final labelized class distribution.
   - **Action:** Keep the chart dependency-free unless Brian approves a dependency install.
   - **Constraint:** Use a CSS module, not global chart classes.
 
-- [ ] **Step 3.6: Build balancing panel (`components/dataforge/balancing-panel.tsx`)**
+- [x] **Step 3.6: Build balancing panel (`components/dataforge/balancing-panel.tsx`)**
   - **Action:** Show balancing recommendations grouped by class.
   - **Action:** Show current count, target count, recommended weight, sampling strategy, and reason.
   - **Action:** Add a "Run Fal AI Generation" button that triggers the 3-second mocked loader and injects the recovered held-out images.
   - **Action:** Render the generated images in a grid, each marked with a clear `✨ Fal AI` or `Synthetic` badge to prove strict data tracking to the judges.
 
-- [ ] **Step 3.7: Build export manifest button (`components/dataforge/export-manifest-button.tsx`)**
+- [x] **Step 3.7: Build export manifest button (`components/dataforge/export-manifest-button.tsx`)**
   - **Action:** Generate a JSON manifest with original samples, final labels, missing-label completions, corrected labels, duplicate removal decisions, balancing metadata, visual-audit provenance, baseline quality snapshot, and final quality snapshot.
   - **Action:** Preserve label decision provenance in exported records.
   - **Constraint:** Component receives final dataset state via props. It does not recompute global state.
 
-- [ ] **Step 3.8: Local validation**
+- [x] **Step 3.8: Local validation**
   - **Action:** Run `npm run build`.
   - **Validation:** Exported JSON includes `originalLabel`, `finalLabel`, `labelStatus`, `labelReason`, `duplicateStatus`, class weights, sampling strategy, before/after quality metrics, and metric source labels.
 
@@ -307,17 +307,17 @@ Provider boundary decision:
 
 *Owned files: `docs/slides-outline.md`, `docs/demo-script.md`, `docs/video-shot-list.md`, final deck/video files outside the code path.*
 
-- [ ] **Step 5.1: Build the pitch narrative**
+- [x] **Step 5.1: Build the pitch narrative**
   - **Action:** Frame the problem as broken datasets before training: class imbalance, missing labels, wrong labels, and duplicates.
   - **Action:** State the thesis: DataForge is a closed-loop dataset repair cockpit, not a model training platform.
   - **Action:** Keep the story centered on before/after dataset quality delta.
 
-- [ ] **Step 5.2: Create the demo script (`docs/demo-script.md`)**
+- [x] **Step 5.2: Create the demo script (`docs/demo-script.md`)**
   - **Action:** Script the exact click path: load dataset, run the visual audit, approve missing-label completions, approve relabels, remove duplicates, review balancing plan, re-evaluate the repair manifest, export.
   - **Action:** Include one memorable line for the labeling feature: "A cat in the dog folder quietly poisons training before the model ever starts."
   - **Action:** Include sponsor mentions carefully: Adaption Labs for manifest-level dataset quality workflow where used, GPT Vision/Gemini for image understanding, GPT-5.5 for explanation and structured report, Convex-style live dashboard visibility, and optional Fal only if used for stretch additions.
 
-- [ ] **Step 5.3: Create the slide outline (`docs/slides-outline.md`)**
+- [x] **Step 5.3: Create the slide outline (`docs/slides-outline.md`)**
   - **Action:** Slide 1: DataForge one-liner.
   - **Action:** Slide 2: The data quality problem.
   - **Action:** Slide 3: Closed-loop workflow.
@@ -326,7 +326,7 @@ Provider boundary decision:
   - **Action:** Slide 6: Architecture, provider boundaries, and Adaption Labs-compatible manifest workflow.
   - **Action:** Slide 7: Why it matters and next steps.
 
-- [ ] **Step 5.4: Record video shot list (`docs/video-shot-list.md`)**
+- [x] **Step 5.4: Record video shot list (`docs/video-shot-list.md`)**
   - **Action:** Capture the initial dashboard idle state.
   - **Action:** Capture baseline quality evaluation and visual label audit results.
   - **Action:** Capture approving a missing label, a mislabeled cat/dog correction, and a duplicate removal.
