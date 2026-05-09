@@ -1,0 +1,219 @@
+.root {
+  --df-text: rgba(232, 236, 244, 0.92);
+  --df-text-dim: rgba(232, 236, 244, 0.55);
+  --df-card-bg: rgba(18, 22, 32, 0.65);
+  --df-card-border: rgba(255, 255, 255, 0.08);
+  --df-accent: rgba(120, 220, 255, 0.85);
+  --df-good: rgba(120, 230, 170, 0.95);
+  --df-warn-text: rgba(245, 200, 130, 0.95);
+  --df-bad: rgba(240, 140, 160, 0.95);
+
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  color: var(--df-text);
+}
+
+.header { display: flex; flex-direction: column; gap: 0.25rem; }
+
+.kicker {
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--df-text-dim);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--df-text-dim);
+  max-width: 56ch;
+  line-height: 1.45;
+}
+
+.subtitle em { font-style: italic; color: var(--df-text); }
+
+.empty {
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: var(--df-card-bg);
+  border: 1px solid var(--df-card-border);
+  text-align: center;
+  color: var(--df-text-dim);
+  font-size: 0.85rem;
+}
+
+.summaryStrip {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.summaryStrip li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--df-card-border);
+}
+
+.summaryStrip li strong { font-size: 0.95rem; font-weight: 600; }
+.summaryStrip li small {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--df-text-dim);
+}
+
+.summaryStrip li[data-strategy="keep"] strong { color: var(--df-good); }
+.summaryStrip li[data-strategy="upsample"],
+.summaryStrip li[data-strategy="downsample"] { border-color: rgba(120, 220, 255, 0.25); }
+.summaryStrip li[data-strategy="collect_more"] strong,
+.summaryStrip li[data-strategy="optional_generate"] strong { color: var(--df-warn-text); }
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+}
+
+.row {
+  --df-accent: rgba(120, 220, 255, 0.85);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 1rem;
+  border-radius: 14px;
+  background: var(--df-card-bg);
+  border: 1px solid var(--df-card-border);
+  border-left: 3px solid var(--df-accent);
+}
+
+.row[data-strategy="keep"]              { border-left-color: var(--df-good); }
+.row[data-strategy="upsample"]          { border-left-color: var(--df-accent); }
+.row[data-strategy="downsample"]        { border-left-color: rgba(160, 200, 255, 0.7); }
+.row[data-strategy="collect_more"]      { border-left-color: var(--df-warn-text); }
+.row[data-strategy="optional_generate"] { border-left-color: var(--df-bad); }
+
+.rowHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rowLabel { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.95rem; }
+
+.dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--df-accent);
+}
+
+.strategyChip {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--df-text-dim);
+}
+
+.row[data-strategy="keep"] .strategyChip { color: var(--df-good); }
+.row[data-strategy="collect_more"] .strategyChip,
+.row[data-strategy="optional_generate"] .strategyChip { color: var(--df-warn-text); }
+
+.rowMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  margin: 0;
+}
+
+.rowMeta div { display: flex; flex-direction: column; gap: 0.1rem; }
+
+.rowMeta dt {
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--df-text-dim);
+  margin: 0;
+}
+
+.rowMeta dd {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--df-text);
+}
+
+.reason { margin: 0; font-size: 0.82rem; color: var(--df-text); line-height: 1.4; }
+
+.help { margin: 0; color: var(--df-text-dim); }
+.help small { font-size: 0.72rem; font-style: italic; }
+
+.actions { display: flex; gap: 0.4rem; margin-top: 0.25rem; }
+
+.btn {
+  appearance: none;
+  border: 1px solid var(--df-card-border);
+  background: transparent;
+  color: var(--df-text);
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.btnPrimary {
+  background: var(--df-accent);
+  color: #0b0e15;
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.btnPrimary:hover { background: rgba(140, 230, 255, 0.95); }
+
+.statusPill {
+  align-self: flex-start;
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--df-text-dim);
+  font-weight: 600;
+}
+
+.statusPill[data-status="accepted"] { background: rgba(120, 230, 170, 0.12); color: var(--df-good); }
+.statusPill[data-status="rejected"] { background: rgba(240, 140, 160, 0.12); color: var(--df-bad); }
+.statusPill[data-status="applied"]  { background: rgba(120, 220, 255, 0.12); color: var(--df-accent); }
