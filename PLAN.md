@@ -4,7 +4,7 @@ This document is the authoritative implementation plan for the DataForge hackath
 
 The product target is a credible, demo-safe loop:
 
-1. Load the animal image dataset.
+1. Load the animal image dataset (simulated "upload" using the local `data/` directory).
 2. Evaluate dataset quality.
 3. Detect likely label mistakes.
 4. Approve relabeling fixes.
@@ -386,7 +386,7 @@ Recommended demo dataset:
 *Objective: Know when the build is good enough to present.*
 
 - [ ] **Acceptance 1: Dataset load works**
-  - **Validation:** Clicking Load Demo Animal Dataset shows classes, sample count, missing-label count, duplicate count, and seeded label issue count.
+  - **Validation:** Clicking "Upload ZIP" (which simulates an upload by loading from the local `data/` directory) shows classes, sample count, missing-label count, duplicate count, and seeded label issue count.
 
 - [ ] **Acceptance 2: Baseline evaluation works**
   - **Validation:** Clicking Analyze Dataset shows baseline Adaption quality, balance, completeness, consistency, missing-label, duplicate, and label issue metrics.

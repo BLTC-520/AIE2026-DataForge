@@ -108,7 +108,7 @@ DataForge should be pitched as a **computer-vision dataset repair cockpit powere
 ### 3.3 Phase 1: Entry, Upload, and Dataset Normalization
 
 1. **Landing Page:** User lands on a technical dashboard-style page with the promise: "Evaluate and repair your training dataset before you train."
-2. **Dataset Upload:** User uploads a ZIP of images, an image manifest CSV/JSON, or both. For the hackathon MVP, the most important path is a partially labeled ZIP of images arranged by class folder plus unlabeled or unknown folders.
+2. **Dataset Upload:** User uploads a ZIP of images, an image manifest CSV/JSON, or both. For the hackathon MVP demo, the "upload" action will be simulated by reading directly from the local `data/` directory. This ensures the pre-configured, deliberately imbalanced dataset is loaded instantly and reliably without network file-transfer delays.
 3. **File Validation:** The app validates file type, file size, and basic structure. MVP file size should be capped to avoid timeouts and excessive memory usage.
 4. **Dataset Parsing:** The app extracts existing labels, missing-label count, sample count, class distribution, and previewable records. For image datasets, it shows thumbnails grouped by current label, unlabeled status, and suspected issue state.
 5. **Convex Dataset Record:** The app creates a dataset project in Convex with status `uploaded` and logs the first event.
@@ -698,6 +698,7 @@ Prepare a small image classification dataset before the hackathon. The dataset s
 Recommended demo:
 
 - Task: animal image classification across pets and wildlife.
+- Source Path: The pre-processed images are stored in the local `data/animals/raw-img/` directory, which the demo will use as the target of the simulated ZIP upload.
 - Training intent: "Train an animal image classifier that works across common pets and wildlife, including low-light camera-trap photos."
 - Class count targets should intentionally range from 20 to 100 images per animal class.
 - Majority classes should sit near 80 to 100 images.
