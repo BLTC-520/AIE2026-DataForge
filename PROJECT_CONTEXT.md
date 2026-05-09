@@ -4,9 +4,9 @@ DataForge is a hackathon product concept for AI Engineer Singapore.
 
 ## 0. Top-Line Demo Story
 
-**DataForge is an adaptive image dataset repair loop: evaluate, labelize, deduplicate, balance, re-evaluate, export.**
+**DataForge is an adaptive, iterative image dataset repair loop: evaluate, labelize, deduplicate, balance, re-evaluate, and loop (via a soft orchestrator) until a confidence score is met, then export.**
 
-The winning demo should show a deliberately imbalanced, partially labeled image dataset, run a vision audit with seeded demo truth or GPT Vision/Gemini, evaluate the normalized repair manifest through an Adaption Labs-compatible quality loop where available, surface missing labels, likely label mistakes, and duplicate images, apply approved labels, relabels, and duplicate removals, rebalance class weightage, run evaluation again, and display an improved quality score, label completeness score, duplicate issue count, consistency score, or balance metric. The cleaned labelized dataset and report are the climax.
+The winning demo should show a deliberately imbalanced, partially labeled image dataset, run a vision audit with seeded demo truth or GPT Vision/Gemini, evaluate the normalized repair manifest through an Adaption Labs-compatible quality loop where available, surface missing labels, likely label mistakes, and duplicate images, apply approved labels, relabels, and duplicate removals, rebalance class weightage, run evaluation again, and loop until improvement is satisfactory. The cleaned labelized dataset and report are the climax.
 
 Top demo features:
 
@@ -14,7 +14,7 @@ Top demo features:
 2. **Relabel:** flag wrong labels, such as a cat labeled as a dog, and preserve original-label provenance.
 3. **Deduplicate:** detect duplicate or near-duplicate images and remove approved duplicates from export.
 4. **Balance:** convert skewed distributions, such as 90 cats and 20 dogs, into a target balance plan such as 90 cats and 80 dogs using class weights, sampling recommendations, or optional additions.
-5. **Prove improvement:** evaluate the before/after repair manifest and derived quality metrics, then export a clean labeled dataset and report.
+5. **Prove improvement:** evaluate the before/after repair manifest and derived quality metrics, iterate via the soft orchestrator if needed, then export a clean labeled dataset (with renamed files) and report.
 
 30-second judge pitch:
 
@@ -38,17 +38,19 @@ This distinction matters for the hackathon. DataForge should not promise "we imp
 4. GPT-5.5 translated the visual audit, quality metrics, and dataset metadata into an actionable label-quality and balancing report.
 5. The user reviewed missing-label suggestions and likely mislabeled samples, then approved corrected labels.
 6. DataForge produced a cleaned and labelized dataset manifest with balancing metadata.
-7. The second evaluation showed the cleaned dataset improved on quality, balance, completeness, or consistency metrics.
+7. The second evaluation showed the cleaned dataset improved. A soft orchestrator checks a confidence score against a stopping criteria to determine if another iterative loop is needed.
+8. Export a clean labeled dataset (relabeling the filenames themselves), a deduplicated manifest, and a comprehensive report.
 
-The winning thesis is that dataset curation can become an **adaptive improvement loop**:
+The winning thesis is that dataset curation can become an **adaptive, iterative improvement loop**:
 
-1. Normalize the image dataset into a repair manifest.
+1. Normalize the image dataset into a repair manifest, identifying clusters (using folder names for the demo).
 2. Use seeded demo truth or GPT Vision/Gemini to explain missing labels, likely wrong labels, duplicate images, and class imbalance.
-3. Review and apply label completions, corrections, and duplicate removals.
+3. Review and apply label completions, corrections (ensuring they reflect the image), and duplicate removals.
 4. Balance the dataset through class weights, sampling recommendations, or optional generated/collected additions.
 5. Re-ingest or rebuild the cleaned repair manifest.
 6. Evaluate again with Adaption Labs where available, or the deterministic fallback quality adapter during the demo.
-7. Export a clean labeled, deduplicated dataset and report.
+7. Loop via a "soft orchestrator" if the improvement/confidence score does not meet the stopping criteria.
+8. Export a clean labeled, deduplicated dataset (relabeling the actual files) and report.
 
 DataForge should feel technical and credible. It should avoid the common hackathon trap of treating generated images as the product. The core value is labelization and dataset quality repair: every sample should end with a clear label status, every correction should preserve provenance, and every balancing decision should be tied to measured dataset gaps and a second quality evaluation.
 
@@ -62,6 +64,8 @@ For the AI Engineer hackathon, DataForge should optimize for four judging moment
 The MVP should focus on one clean dataset type: **partially labeled animal image classification datasets**. Supporting CSV, JSON, and arbitrary images is useful later, but a 7-hour build should prioritize a pre-prepared animal classifier demo with deliberate class imbalance, missing labels, and obvious mislabeled samples such as a cat image placed in the dog class. Animal classes are visually obvious, easy for judges to understand, and ideal for showing label completion, relabeling, and balancing without training a model.
 
 The prepared animal subset must stay intentionally imbalanced. Do not downsample every class to the same count. Keep a bounded random sample per animal class between 20 and 100 images, with majority classes near 100 and minority classes near 20. This creates the bias and balance gap the demo is supposed to repair. Fal-generated images should be used only after the balancing plan identifies underrepresented classes and the user approves optional synthetic additions needed to move minority classes toward the target distribution.
+
+**Crucial Demo Optimization:** Generating hundreds of images takes too long for a 3-hour build and a 2-minute demo. Therefore, the images previously deleted to create the dataset imbalance (from commit `7dbd4f14`) will be recovered and injected instantly during the "Balance" stage. In the UI and the pitch, these are called **actual synthetic images from fal ai**, preserving the exact real-world workflow and data provenance (`source: "synthetic"`, `provider: "fal.ai"`) without the latency of live inference.
 
 ## 2. Core Positioning
 
@@ -102,7 +106,15 @@ Critical provider boundary:
 - **Balanced Dataset:** The labelized dataset plus class weights, sampling metadata, and optional approved additions for underrepresented classes.
 - **Augmented Dataset:** The corrected dataset plus optional approved synthetic samples and adaptations.
 - **Improvement Delta:** The comparison between baseline evaluation and final labelized or balanced evaluation.
-- **Quality Report:** A report containing source-labeled quality metrics, deterministic distribution metrics, label issue summary, balancing plan, and remaining manual review items.
+- **Quality Report / Visualizations:** A report containing source-labeled quality metrics, deterministic distribution metrics, label issue summary, balancing plan, and remaining manual review items. Specifically includes:
+  - How many times the repair loop was executed.
+  - Overall confidence score.
+  - Images added to balance.
+  - Labels corrected.
+  - Missing labels added.
+  - Duplicate images removed.
+  - Clusters identified (mocked via folder names).
+  - A React Flow visualization of the simulated model pipeline.
 - **Export Bundle:** A downloadable clean labeled dataset package and report, optionally in Hugging Face-compatible format.
 
 ### 3.2 Roles
@@ -257,7 +269,7 @@ DataForge should use a lean, hackathon-friendly architecture with one web app, C
 - **Styling:** Tailwind CSS with a dark, technical UI.
 - **Components:** shadcn/ui or lightweight custom components.
 - **Charts:** Recharts for class distribution, score trends, and before/after comparisons.
-- **Pipeline Visualization:** React Flow for a fixed, non-editable pipeline hero showing Upload -> Evaluate -> Labelize -> Deduplicate -> Balance -> Re-evaluate -> Export.
+- **Pipeline Visualization:** React Flow for a simulated model pipeline hero showing Upload -> Evaluate -> Labelize -> Deduplicate -> Balance -> Re-evaluate -> Loop (Soft Orchestrator) -> Export.
 - **Upload:** react-dropzone for file upload.
 - **Parsing:** Papa Parse for CSV, native JSON parsing, JSZip for ZIP, image metadata extraction where needed.
 - **Realtime Backend:** Convex for datasets, stage updates, events, missing labels, label issues, balancing plans, optional additions, and dashboard subscriptions.
@@ -660,7 +672,7 @@ Track for every dataset run:
 Hackathon cost controls & Demo Constraints:
 
 - **Strict 2-Minute Demo Rule:** Real-world CV processing takes 30+ minutes. To fit the demo format, **the entire pipeline may be mocked with pre-computed data.**
-- All backend processes must be simulated using artificial wait times, spinners, and progress visuals unless a live call has already been proven reliable. This includes manifest evaluation, vision-model label detection, duplicate detection, and re-evaluation.
+- All backend processes must be simulated using artificial wait times, spinners, and progress visuals unless a live call has already been proven reliable. This includes manifest evaluation, vision-model label detection, duplicate detection, re-evaluation, and Fal AI synthetic image generation (which will instantly load the held-out "deleted" images).
 - The demo must not imply that Adaption Labs inspected image pixels. Use seeded visual-audit results or GPT Vision/Gemini for image-specific findings.
 - Limit preview analysis to first 100 rows or 12 to 24 images.
 - Limit optional synthetic generation to 10 images per class by default.
