@@ -51,6 +51,9 @@ Avoid:
 // Saves all records from the linked list to the database file
 ```
 
+## PLAN UPDATES
+Whenever you modify files or complete steps outlined in `@PLAN.md`, you MUST use your edit tool to mark those steps as completed (`[x]`) in `@PLAN.md`, or add new steps if you performed work outside the original plan. You must commit and push updates to `PLAN.md` immediately.
+
 ## JUST-IN-TIME SKILLS & MCP USAGE
 Actively discover and invoke specialized capabilities when solving tasks. Do not simulate these tools; invoke them directly. To prevent context poisoning, DO NOT load tools upfront. Discover and invoke skills/MCPs *only* at the exact step their capabilities are required.
 
