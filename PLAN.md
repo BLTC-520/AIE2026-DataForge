@@ -165,12 +165,6 @@ Provider boundary decision:
   - **Action:** Make the whole click-through complete in under 2 minutes.
   - **Constraint:** Keep behavior strictly deterministic. The "live" pipeline is entirely simulated for the presentation and must not imply Adaption Labs read image pixels.
 
-- [ ] **Step B2.6: Responsive and build validation**
-  - **Action:** Test desktop width around 1440px.
-  - **Action:** Test mobile width around 390px.
-  - **Action:** Run `npm run build`.
-  - **Validation:** No TypeScript errors, no hydration errors, no horizontal page overflow.
-
 ---
 
 ## Bazel Phases
