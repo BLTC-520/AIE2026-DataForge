@@ -178,45 +178,45 @@ Provider boundary decision:
 
 *Owned files: `components/dataforge/label-audit-panel.tsx`, `components/dataforge/label-audit-panel.module.css`, `components/dataforge/duplicate-review-panel.tsx`, `components/dataforge/duplicate-review-panel.module.css`, `components/dataforge/dataset-explorer.tsx`, `components/dataforge/dataset-explorer.module.css`, `lib/dataforge/label-audit.ts`, `lib/dataforge/duplicates.ts`.*
 
-- [ ] **Step 2.1: Implement label audit helper (`lib/dataforge/label-audit.ts`)**
+- [x] **Step 2.1: Implement label audit helper (`lib/dataforge/label-audit.ts`)**
   - **Action:** Export `getOpenLabelIssues(samples, labelIssues)`.
   - **Action:** Export `getMissingLabelIssues(samples)`.
   - **Action:** Export `applyLabelDecisions(samples, actions)` for both missing-label completions and wrong-label corrections.
   - **Action:** Export `summarizeLabelIssues(labelIssues)` with counts for missing, corrected, newly labeled, accepted, rejected, and manual review.
   - **Constraint:** Use pure functions. Do not import React. Do not mutate input arrays.
 
-- [ ] **Step 2.1.1: Implement duplicate helper (`lib/dataforge/duplicates.ts`)**
+- [x] **Step 2.1.1: Implement duplicate helper (`lib/dataforge/duplicates.ts`)**
   - **Action:** Export `getOpenDuplicateIssues(samples, duplicateIssues)`.
   - **Action:** Export `applyDuplicateDecisions(samples, actions)`.
   - **Action:** Export `summarizeDuplicateIssues(duplicateIssues)` with counts for suspected, removed, kept, and manual review.
   - **Constraint:** Use deterministic seeded duplicate data for the demo, with file hash, perceptual hash, or GPT Vision/Gemini as the future live path.
 
-- [ ] **Step 2.2: Build label review UI (`components/dataforge/label-audit-panel.tsx`)**
+- [x] **Step 2.2: Build label review UI (`components/dataforge/label-audit-panel.tsx`)**
   - **Action:** Show current label, suggested final label, issue type, confidence, reason, and sample scenario.
   - **Action:** Provide Approve, Reject, and Manual Review actions.
   - **Action:** Make confidence visually clear without implying it is an objective provider metric if it is demo-estimated.
   - **Constraint:** Component receives `labelIssues`, `samples`, and callback props from Brian's orchestrator. It does not own global state.
 
-- [ ] **Step 2.3: Add label issue metric cards inside the panel**
+- [x] **Step 2.3: Add label issue metric cards inside the panel**
   - **Action:** Display missing labels, suspected wrong labels, accepted completions, accepted corrections, rejected suggestions, and remaining review count.
   - **Action:** Make the demo story obvious: "24 missing labels, 7 suspected mislabels, 26 approved, 5 manual review".
 
-- [ ] **Step 2.3.1: Build duplicate review UI (`components/dataforge/duplicate-review-panel.tsx`)**
+- [x] **Step 2.3.1: Build duplicate review UI (`components/dataforge/duplicate-review-panel.tsx`)**
   - **Action:** Show suspected duplicate pairs with sample IDs, current/final labels, similarity reason, and source.
   - **Action:** Provide Remove Duplicate, Keep Both, and Manual Review actions.
   - **Action:** Make it clear duplicate removal affects export, not source image deletion.
 
-- [ ] **Step 2.4: Build dataset explorer with label provenance (`components/dataforge/dataset-explorer.tsx`)**
+- [x] **Step 2.4: Build dataset explorer with label provenance (`components/dataforge/dataset-explorer.tsx`)**
   - **Action:** Support filters for class, source, and label status.
   - **Action:** Show original label, current label, final label, and correction/completion reason when changed.
   - **Action:** Show `Unlabeled`, `Newly labeled`, `Relabeled`, `Duplicate`, `Removed`, `Accepted`, and `Manual Review` badges.
   - **Constraint:** This component owns the explorer table so Joseph does not edit it.
 
-- [ ] **Step 2.5: Style label audit and explorer via CSS modules only**
+- [x] **Step 2.5: Style label audit and explorer via CSS modules only**
   - **Action:** Use `label-audit-panel.module.css` and `dataset-explorer.module.css`.
   - **Constraint:** Do not edit `styles.css`.
 
-- [ ] **Step 2.6: Local validation**
+- [x] **Step 2.6: Local validation**
   - **Action:** Temporarily render the panel in an isolated local fixture or Story-style test area if needed.
   - **Action:** Run `npm run build` before handing off.
   - **Validation:** Approving corrections returns updated samples with preserved original labels.

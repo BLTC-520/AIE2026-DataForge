@@ -1,0 +1,104 @@
+.panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+  background: linear-gradient(180deg, rgba(23, 28, 27, 0.94), rgba(11, 14, 14, 0.94));
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.header h2 {
+  margin: 0;
+  letter-spacing: 0.04em;
+}
+
+.header p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.toolbar {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.toolbar label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.toolbar select {
+  width: 100%;
+  color: inherit;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #0d1111;
+  padding: 8px;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead th {
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+  padding: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.table td {
+  padding: 8px;
+  border-bottom: 1px solid #202621;
+  color: #f2f0dc;
+  vertical-align: top;
+}
+
+.table td strong {
+  display: block;
+}
+
+.table td small {
+  display: block;
+  color: var(--muted);
+}
+
+.empty {
+  text-align: center;
+  color: var(--faint);
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badge {
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(82, 214, 255, 0.08);
+  color: var(--cyan);
+  font-size: 10px;
+  text-transform: uppercase;
+  padding: 4px 8px;
+}

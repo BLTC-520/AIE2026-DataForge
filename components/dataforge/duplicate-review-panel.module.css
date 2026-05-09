@@ -1,0 +1,143 @@
+.panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+  background: linear-gradient(180deg, rgba(23, 28, 27, 0.94), rgba(11, 14, 14, 0.94));
+}
+
+.header {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.header h2 {
+  margin: 0;
+  letter-spacing: 0.04em;
+}
+
+.header p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.metrics {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+}
+
+.metricCard {
+  border: 1px solid rgba(82, 214, 255, 0.2);
+  border-radius: 8px;
+  padding: 8px;
+  background: rgba(12, 16, 16, 0.8);
+}
+
+.metricCard p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.metricCard strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 20px;
+}
+
+.empty {
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--faint);
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.issueRow {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  background: rgba(8, 11, 11, 0.66);
+}
+
+.pair {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+
+.pair p {
+  margin: 0 0 2px;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.pair span {
+  display: block;
+  color: #f2f0dc;
+  font-size: 13px;
+}
+
+.pair small {
+  display: block;
+  color: var(--muted);
+}
+
+.reason {
+  margin: 0;
+  border-left: 3px solid var(--cyan);
+  padding-left: 10px;
+  color: #f2f0dc;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.primary,
+.success,
+.ghost {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: inherit;
+  background: #151a1a;
+}
+
+.primary {
+  border-color: rgba(255, 93, 125, 0.5);
+}
+
+.success {
+  border-color: rgba(84, 240, 180, 0.5);
+}
+
+.ghost {
+  border-color: rgba(162, 168, 154, 0.5);
+}
+
+.primary:disabled,
+.success:disabled,
+.ghost:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
