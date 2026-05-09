@@ -73,6 +73,12 @@ Recommended demo dataset:
   - **Action:** Create `lib/dataforge/` for deterministic demo data, pipeline state, metrics, label audit helpers, Adaption helpers, balancing helpers, and export helpers.
   - **Action:** Keep new files small and named by feature so ownership is obvious.
 
+- [ ] **Step 1.1.1: Verify local environment files**
+  - **Action:** Keep `.env.example` committed with blank provider keys and local Convex defaults.
+  - **Action:** Keep `.env.local` ignored and use it for real provider keys.
+  - **Action:** Confirm Convex local values are present: `CONVEX_DEPLOYMENT=anonymous:anonymous-AIESG-May2026`, `NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:3210`, and `NEXT_PUBLIC_CONVEX_SITE_URL=http://127.0.0.1:3211`.
+  - **Constraint:** Never commit real `ADAPTION_API_KEY`, `OPENAI_API_KEY`, or `FAL_KEY` values.
+
 - [ ] **Step 1.2: Define shared TypeScript contracts (`lib/dataforge/types.ts`)**
   - **Action:** Define `StageStatus`, `PipelineStage`, `SampleSource`, `DatasetSample`, `DatasetMetrics`, `ClassDistribution`, `LabelIssue`, `DuplicateIssue`, `LabelDecisionAction`, `BalancingPlan`, `AdaptionEvaluationSnapshot`, `PipelineEvent`, `QualityReport`, and `ExportManifest`.
   - **Action:** Include labelization fields in `DatasetSample`: `originalLabel`, `currentLabel`, `finalLabel`, `labelStatus`, `labelConfidence`, `labelReason`, and `qualityFlags`.

@@ -254,9 +254,37 @@ DataForge should use a lean, hackathon-friendly architecture with one web app, C
 - **LLM Analysis:** OpenAI GPT-5.5 using structured JSON output through the Responses API or equivalent available endpoint.
 - **Evaluation Platform:** Adaption Labs SDK/API for ingest, adapt, evaluate, and quality metrics.
 - **Synthetic Image Generation:** Fal as an optional stretch path for underrepresented classes after labelization and balancing decisions.
-- **Storage:** Vercel Blob, Cloudflare R2, Supabase Storage, or Convex file storage for uploaded datasets and generated images.
+- **Storage:** Convex file storage or local demo manifests for uploaded datasets and export artifacts. Do not use Vercel Blob for the MVP.
 - **Validation:** Zod for all provider outputs, request payloads, and structured report schemas.
 - **Deployment:** Vercel.
+
+### 4.1.1 Environment Variables
+
+Use `.env.local` for local secrets and `.env.example` as the committed template. Never put real provider secrets in `.env.example`.
+
+Required for local Convex:
+
+```env
+CONVEX_DEPLOYMENT=anonymous:anonymous-AIESG-May2026
+NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:3210
+NEXT_PUBLIC_CONVEX_SITE_URL=http://127.0.0.1:3211
+```
+
+Required for live provider calls:
+
+```env
+ADAPTION_API_KEY=
+ADAPTION_LABS_BASE_URL=https://api.adaptionlabs.ai
+OPENAI_API_KEY=
+```
+
+Optional stretch feature:
+
+```env
+FAL_KEY=
+```
+
+If provider keys are missing, DataForge should use deterministic fallback behavior so the demo remains reliable.
 
 ### 4.2 Application Surfaces
 

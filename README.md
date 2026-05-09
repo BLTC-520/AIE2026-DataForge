@@ -70,26 +70,26 @@ npm run start
 
 ## Environment Variables
 
-The current prototype works without provider keys. Future live integrations can use:
+The current prototype should work without provider keys by falling back to deterministic demo data. Local Convex uses the checked-in defaults below:
 
 ```env
+CONVEX_DEPLOYMENT=anonymous:anonymous-AIESG-May2026
+NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:3210
+NEXT_PUBLIC_CONVEX_SITE_URL=http://127.0.0.1:3211
+
+ADAPTION_API_KEY=
+ADAPTION_LABS_BASE_URL=https://api.adaptionlabs.ai
 OPENAI_API_KEY=
 FAL_KEY=
-ADAPTION_LABS_API_KEY=
-ADAPTION_LABS_BASE_URL=
-NEXT_PUBLIC_CONVEX_URL=
-CONVEX_DEPLOY_KEY=
-BLOB_READ_WRITE_TOKEN=
 ```
 
-When keys are missing, the demo should use deterministic fallback behavior so the hackathon flow remains reliable.
+Keep real provider keys only in `.env.local`. Do not commit secrets to `.env.example`.
 
 ## Repository Notes
 
 - `app/page.tsx` contains the main interactive dashboard.
 - `styles.css` contains the visual system and responsive styling.
-- `DATAFORGE_PROJECT_CONTEXT.md` contains the product specification.
-- `DATAFORGE_ONESHOT_BUILD_PROMPT.md` contains the original implementation prompt.
+- `PROJECT_CONTEXT.md` contains the product specification.
 
 ## Status
 
