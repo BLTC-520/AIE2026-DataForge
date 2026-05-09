@@ -10,7 +10,7 @@ including the live demo cue.
 **Title:** DataForge
 
 **Tagline:**
-> Repair your training data before the model ever sees it.
+> Stop training on broken data.
 
 **Visual:** Logo + a one-line subtitle: *"Closed-loop dataset readiness for
 ML teams."*
