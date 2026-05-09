@@ -96,7 +96,7 @@ Recommended demo dataset:
   - **Action:** Create an obvious imbalance, such as 90 cats and 20 dogs, with target balance metadata such as 90 cats and 80 dogs.
   - **Action:** Export pure data only. Do not export React state or UI code from this file.
 
-- [ ] **Step 1.4: Create pipeline state helpers (`lib/dataforge/pipeline.ts`)**
+- [x] **Step 1.4: Create pipeline state helpers (`lib/dataforge/pipeline.ts`)**
   - **Action:** Implement helpers for queued stage creation, event creation, staged delay metadata, and demo pipeline transitions.
   - **Action:** Add the new stage order: Upload, Evaluate, Labelize, Deduplicate, Balance, Re-evaluate, Export.
   - **Constraint:** Keep timing deterministic so the live demo is repeatable.
