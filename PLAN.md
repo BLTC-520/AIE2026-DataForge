@@ -10,12 +10,12 @@ The product target is a credible, demo-safe loop:
 4. Approve relabeling fixes.
 5. Detect and remove duplicate or near-duplicate images.
 6. Balance class weightage through class weights, sampling recommendations, or optional additions.
-7. Re-evaluate the clean labeled dataset with Adaption Labs.
+7. Re-evaluate the clean labeled repair manifest with the same quality source used for baseline.
 8. Export the clean labelized dataset, manifest, and report.
 
 30-second judge pitch:
 
-> DataForge turns messy image datasets into training-ready assets. Teams upload a partially labeled dataset, and DataForge uses Adaption Labs to evaluate quality, then helps fix missing labels, wrong labels, duplicates, and class imbalance. The output is a clean labeled dataset plus a report proving the before-and-after improvement. This matters because AI teams always need more high-quality labeled data, and that demand keeps growing every year.
+> DataForge turns messy image datasets into training-ready assets. Teams upload a partially labeled dataset, DataForge uses a seeded or GPT Vision/Gemini visual audit to find missing labels, wrong labels, and duplicates, then evaluates the cleaned repair manifest and quality deltas. The output is a clean labeled dataset plus a report proving the before-and-after improvement. This matters because AI teams always need more high-quality labeled data, and that demand keeps growing every year.
 
 Recommended demo dataset:
 
@@ -24,6 +24,13 @@ Recommended demo dataset:
 - **Constraint:** Do not use it raw. Build a controlled demo subset with deliberate defects: missing labels, wrong labels, duplicates, and class imbalance.
 - **Demo subset target:** 4 to 6 classes, around 150 to 300 images total, with a skew such as 90 cats and 20 dogs so balancing is obvious.
 - **Why it works:** The source is realistic enough to feel credible, while the curated corruption makes the two-minute repair loop predictable.
+
+Provider boundary decision:
+
+- Adaption Labs does not inspect image pixels for this MVP.
+- Image-specific findings come from seeded demo truth first, with GPT Vision/Gemini as the optional live path.
+- Adaption Labs, if used, receives only a normalized CSV/JSON repair manifest and should be described as manifest-level dataset evaluation, not visual image analysis.
+- The live presentation may be fully mocked, but the UI and pitch must not claim that Adaption analyzed image content.
 
 ## Parallel Work Rules
 
@@ -135,21 +142,21 @@ Recommended demo dataset:
   - **Validation:** The UI can pause after labelization so the presenter can approve completions/corrections before continuing.
 
 - [ ] **Step B2.3: Connect approved label decisions to downstream metrics**
-  - **Action:** Apply Bazel's `applyLabelDecisions` before Joseph's metrics, balancing, Adaption final evaluation, and export helpers run.
+  - **Action:** Apply Bazel's `applyLabelDecisions` before Joseph's metrics, balancing, final quality evaluation, and export helpers run.
   - **Action:** Make class distribution, missing-label counts, and label issue counts change after approvals.
   - **Constraint:** Do not auto-apply label decisions on page load. The user must approve them.
 
-- [ ] **Step B2.4: Connect duplicate review, balancing, and Adaption final evaluation to labelized data**
+- [ ] **Step B2.4: Connect duplicate review, balancing, and final quality evaluation to labelized data**
   - **Action:** Run duplicate review after label review and before balancing.
   - **Action:** Run Joseph's balancing helpers only after label and duplicate decisions are applied.
-  - **Action:** Ensure Adaption final evaluation receives the clean labelized and deduplicated manifest, not stale original samples.
-  - **Validation:** Manifest contains original, newly labeled, relabeled, duplicate removal, balancing, and Adaption evaluation provenance.
+  - **Action:** Ensure final evaluation receives the clean labelized and deduplicated repair manifest, not stale original samples.
+  - **Validation:** Manifest contains original, newly labeled, relabeled, duplicate removal, balancing, visual-audit, and quality-evaluation provenance.
 
 - [ ] **Step B2.5: Demo timing pass (Mocked Processing)**
   - **Action:** Tune artificial staged delays (spinners and loading visuals) so the demo feels live and processing-heavy but advances predictably.
-  - **Action:** Use pre-computed, mocked data for all Adaption Labs evaluations, duplicate detection, and LLM labeling to bypass the 30+ minute real-world processing times.
+  - **Action:** Use pre-computed, mocked data for visual audit, duplicate detection, manifest evaluation, and LLM explanation to bypass the 30+ minute real-world processing times.
   - **Action:** Make the whole click-through complete in under 2 minutes.
-  - **Constraint:** Keep behavior strictly deterministic. The "live" pipeline is entirely simulated for the presentation.
+  - **Constraint:** Keep behavior strictly deterministic. The "live" pipeline is entirely simulated for the presentation and must not imply Adaption Labs read image pixels.
 
 - [ ] **Step B2.6: Responsive and build validation**
   - **Action:** Test desktop width around 1440px.
@@ -163,7 +170,7 @@ Recommended demo dataset:
 
 ### Bazel Phase 1: Label Completion, Relabeling, And Duplicate Review
 
-*Objective: Implement the teammate-requested labeling feature: detect missing labels and likely mislabels, let the user approve completions/corrections, and show labelization improvement.*
+*Objective: Implement the teammate-requested labeling feature: use seeded demo truth or GPT Vision/Gemini outputs to detect missing labels and likely mislabels, let the user approve completions/corrections, and show labelization improvement.*
 
 *Owner: Bazel.*
 
@@ -182,7 +189,7 @@ Recommended demo dataset:
   - **Action:** Export `getOpenDuplicateIssues(samples, duplicateIssues)`.
   - **Action:** Export `applyDuplicateDecisions(samples, actions)`.
   - **Action:** Export `summarizeDuplicateIssues(duplicateIssues)` with counts for suspected, removed, kept, and manual review.
-  - **Constraint:** Use Adaption deduplication output where available, but support deterministic seeded fallback data for the demo.
+  - **Constraint:** Use deterministic seeded duplicate data for the demo, with file hash, perceptual hash, or GPT Vision/Gemini as the future live path.
 
 - [ ] **Step 2.2: Build label review UI (`components/dataforge/label-audit-panel.tsx`)**
   - **Action:** Show current label, suggested final label, issue type, confidence, reason, and sample scenario.
@@ -218,9 +225,9 @@ Recommended demo dataset:
 
 ## Joseph Phases
 
-### Joseph Phase 1: Adaption Evaluation, Balancing, Report, And Export Workflow
+### Joseph Phase 1: Manifest Evaluation, Balancing, Report, And Export Workflow
 
-*Objective: Own the Adaption Labs integration contract and the visual proof of improvement: quality cards, before/after charts, class balancing plan, quality report, and export manifest generation.*
+*Objective: Own the manifest-level quality evaluation contract and the visual proof of improvement: quality cards, before/after charts, class balancing plan, quality report, and export manifest generation.*
 
 *Owner: Joseph.*
 
@@ -230,18 +237,18 @@ Recommended demo dataset:
 
 *Owned files: `components/dataforge/quality-report-panel.tsx`, `components/dataforge/quality-report-panel.module.css`, `components/dataforge/distribution-chart.tsx`, `components/dataforge/distribution-chart.module.css`, `components/dataforge/balancing-panel.tsx`, `components/dataforge/balancing-panel.module.css`, `components/dataforge/export-manifest-button.tsx`, `lib/dataforge/adaption.ts`, `lib/dataforge/metrics.ts`, `lib/dataforge/balancing.ts`, `lib/dataforge/export.ts`.*
 
-- [ ] **Step 3.0: Use the Adaption Labs skill**
+- [x] **Step 3.0: Use the Adaption Labs skill**
   - **Action:** Activate `adaptionlabs` before implementing the adapter or report flow.
-  - **Action:** Treat Adaption Labs as the quality authority and keep fallback metrics clearly labeled.
-  - **Action:** Use Adaption's `deduplication` recipe where available, but position DataForge as the image duplicate review UX, not the underlying deduplication engine.
+  - **Action:** Treat Adaption Labs as a manifest-level quality provider where its API supports the input shape and keep fallback metrics clearly labeled.
+  - **Action:** Do not present Adaption Labs as the source of image-pixel understanding or image duplicate detection.
 
 - [ ] **Step 3.1: Implement Adaption adapter contract (`lib/dataforge/adaption.ts`)**
-  - **Action:** Export `createDatasetFromManifest(manifest)` for the `POST /api/v1/datasets` file-source flow.
+  - **Action:** Export `createDatasetFromManifest(manifest)` for the `POST /api/v1/datasets` file-source flow using a normalized CSV/JSON repair manifest, not raw image input.
   - **Action:** Export `uploadManifest(uploadInstructions, file)` for presigned upload instructions.
   - **Action:** Export `runDataset(datasetId, columnMapping, options)` with support for `maxRows` and `estimate`.
-  - **Action:** Support recipe toggles including `deduplication`, `prompt_rephrase`, and `reasoning_traces`.
+  - **Action:** Support recipe toggles only where they make sense for manifest rows; image duplicate review remains seeded, hash-based, perceptual-hash-based, or GPT Vision/Gemini-based.
   - **Action:** Export `pollEvaluation(datasetId)` and `normalizeEvaluation(raw)`.
-  - **Action:** Include a deterministic `mockAdaptionClient` fallback when API keys are absent.
+  - **Action:** Include a deterministic `mockAdaptionClient` fallback when API keys are absent, endpoints are unstable, or Adaption cannot evaluate the image-native input directly.
   - **Constraint:** Do not call Adaption directly from React components. Keep provider access behind adapter functions or server actions.
 
 - [ ] **Step 3.2: Implement metrics helpers (`lib/dataforge/metrics.ts`)**
@@ -257,7 +264,7 @@ Recommended demo dataset:
   - **Constraint:** Do not represent class weights as new real samples.
 
 - [ ] **Step 3.4: Build quality report panel (`components/dataforge/quality-report-panel.tsx`)**
-  - **Action:** Show measured metrics separately from GPT-5.5 inferred recommendations.
+  - **Action:** Show measured metrics separately from GPT-5.5 inferred recommendations and label every metric source: Adaption manifest evaluation, deterministic parser metric, seeded demo metric, or GPT Vision/Gemini estimate.
   - **Action:** Include missing-label and relabeling language after Bazel's decisions are available: newly labeled samples, corrected labels, and remaining manual review risk.
   - **Action:** Show quality, balance, completeness, consistency, missing-label delta, label issue delta, and duplicate issue delta.
 
@@ -272,13 +279,13 @@ Recommended demo dataset:
   - **Action:** Make it visually clear that balancing metadata is not the same as new images.
 
 - [ ] **Step 3.7: Build export manifest button (`components/dataforge/export-manifest-button.tsx`)**
-  - **Action:** Generate a JSON manifest with original samples, final labels, missing-label completions, corrected labels, duplicate removal decisions, balancing metadata, Adaption baseline metrics, and Adaption final metrics.
+  - **Action:** Generate a JSON manifest with original samples, final labels, missing-label completions, corrected labels, duplicate removal decisions, balancing metadata, visual-audit provenance, baseline quality snapshot, and final quality snapshot.
   - **Action:** Preserve label decision provenance in exported records.
   - **Constraint:** Component receives final dataset state via props. It does not recompute global state.
 
 - [ ] **Step 3.8: Local validation**
   - **Action:** Run `npm run build`.
-  - **Validation:** Exported JSON includes `originalLabel`, `finalLabel`, `labelStatus`, `labelReason`, `duplicateStatus`, class weights, sampling strategy, and before/after Adaption metrics.
+  - **Validation:** Exported JSON includes `originalLabel`, `finalLabel`, `labelStatus`, `labelReason`, `duplicateStatus`, class weights, sampling strategy, before/after quality metrics, and metric source labels.
 
 ---
 
@@ -300,9 +307,9 @@ Recommended demo dataset:
   - **Action:** Keep the story centered on before/after dataset quality delta.
 
 - [ ] **Step 5.2: Create the demo script (`docs/demo-script.md`)**
-  - **Action:** Script the exact click path: load dataset, analyze with Adaption Labs, approve missing-label completions, approve relabels, remove duplicates, review balancing plan, re-evaluate, export.
+  - **Action:** Script the exact click path: load dataset, run the visual audit, approve missing-label completions, approve relabels, remove duplicates, review balancing plan, re-evaluate the repair manifest, export.
   - **Action:** Include one memorable line for the labeling feature: "A cat in the dog folder quietly poisons training before the model ever starts."
-  - **Action:** Include sponsor mentions: Adaption Labs for dataset quality evaluation, GPT-5.5 for explanation and structured report, Convex-style live dashboard visibility, and optional Fal only if used for stretch additions.
+  - **Action:** Include sponsor mentions carefully: Adaption Labs for manifest-level dataset quality workflow where used, GPT Vision/Gemini for image understanding, GPT-5.5 for explanation and structured report, Convex-style live dashboard visibility, and optional Fal only if used for stretch additions.
 
 - [ ] **Step 5.3: Create the slide outline (`docs/slides-outline.md`)**
   - **Action:** Slide 1: DataForge one-liner.
@@ -310,12 +317,12 @@ Recommended demo dataset:
   - **Action:** Slide 3: Closed-loop workflow.
   - **Action:** Slide 4: Demo dataset with imbalance, missing labels, mislabels, and duplicates.
   - **Action:** Slide 5: Before/after metrics.
-  - **Action:** Slide 6: Architecture and Adaption Labs integration.
+  - **Action:** Slide 6: Architecture, provider boundaries, and Adaption Labs-compatible manifest workflow.
   - **Action:** Slide 7: Why it matters and next steps.
 
 - [ ] **Step 5.4: Record video shot list (`docs/video-shot-list.md`)**
   - **Action:** Capture the initial dashboard idle state.
-  - **Action:** Capture baseline Adaption evaluation and label audit results.
+  - **Action:** Capture baseline quality evaluation and visual label audit results.
   - **Action:** Capture approving a missing label, a mislabeled cat/dog correction, and a duplicate removal.
   - **Action:** Capture the balancing plan appearing.
   - **Action:** Capture before/after quality delta, clean dataset report, and exported manifest.
@@ -359,12 +366,12 @@ Recommended demo dataset:
 - [ ] **Contract E: export manifest button**
   - **Provided by:** Joseph.
   - **Consumed by:** Brian.
-  - **Expected props:** final samples, label issues, duplicate issues, balancing plan, baseline Adaption metrics, final Adaption metrics, training intent, quality report.
+  - **Expected props:** final samples, label issues, duplicate issues, balancing plan, baseline quality snapshot, final quality snapshot, training intent, quality report.
 
-- [ ] **Contract F: Adaption adapter**
+- [ ] **Contract F: Manifest quality adapter**
   - **Provided by:** Joseph.
   - **Consumed by:** Brian through orchestration/server actions.
-  - **Expected functions:** `createDatasetFromManifest`, `runDataset`, `pollEvaluation`, `normalizeEvaluation`, `mockAdaptionClient`.
+  - **Expected functions:** `createDatasetFromManifest`, `runDataset`, `pollEvaluation`, `normalizeEvaluation`, `mockAdaptionClient`, with no raw image-pixel analysis claims.
 
 ---
 
@@ -378,7 +385,7 @@ Recommended demo dataset:
 - [ ] **Bazel owns label audit and explorer files**
   - **Files:** `components/dataforge/label-audit-panel.tsx`, `components/dataforge/label-audit-panel.module.css`, `components/dataforge/duplicate-review-panel.tsx`, `components/dataforge/duplicate-review-panel.module.css`, `components/dataforge/dataset-explorer.tsx`, `components/dataforge/dataset-explorer.module.css`, `lib/dataforge/label-audit.ts`, `lib/dataforge/duplicates.ts`.
 
-- [ ] **Joseph owns Adaption, balancing, report, and export files**
+- [ ] **Joseph owns manifest quality, balancing, report, and export files**
   - **Files:** `components/dataforge/quality-report-panel.tsx`, `components/dataforge/quality-report-panel.module.css`, `components/dataforge/distribution-chart.tsx`, `components/dataforge/distribution-chart.module.css`, `components/dataforge/balancing-panel.tsx`, `components/dataforge/balancing-panel.module.css`, `components/dataforge/export-manifest-button.tsx`, `lib/dataforge/adaption.ts`, `lib/dataforge/metrics.ts`, `lib/dataforge/balancing.ts`, `lib/dataforge/export.ts`.
 
 - [ ] **Slides/video teammate owns communication artifacts**
@@ -394,7 +401,7 @@ Recommended demo dataset:
   - **Validation:** Clicking "Upload ZIP" (which simulates an upload by loading from the local `data/` directory) shows classes, sample count, missing-label count, duplicate count, and seeded label issue count.
 
 - [ ] **Acceptance 2: Baseline evaluation works**
-  - **Validation:** Clicking Analyze Dataset shows baseline Adaption quality, balance, completeness, consistency, missing-label, duplicate, and label issue metrics.
+  - **Validation:** Clicking Analyze Dataset shows baseline quality, balance, completeness, consistency, missing-label, duplicate, and label issue metrics with visible metric source labels.
 
 - [ ] **Acceptance 3: Label audit works**
   - **Validation:** User can approve at least one missing-label completion and one obvious mislabeled sample while original labels remain preserved.
@@ -406,10 +413,10 @@ Recommended demo dataset:
   - **Validation:** The app shows deterministic class weights or sampling recommendations for foxes, owls, and low-light wildlife without pretending they are real images.
 
 - [ ] **Acceptance 6: Re-evaluation works**
-  - **Validation:** Before/after cards show improved labeling completeness, duplicate count, balance, label issue count, or Adaption quality score.
+  - **Validation:** Before/after cards show improved labeling completeness, duplicate count, balance, label issue count, or quality score without implying Adaption Labs inspected image pixels.
 
 - [ ] **Acceptance 7: Export works**
-  - **Validation:** Exported JSON contains training intent, original labels, final labels, newly labeled samples, corrected labels, duplicate removals, balancing metadata, quality report, and Adaption evaluation snapshots.
+  - **Validation:** Exported JSON contains training intent, original labels, final labels, newly labeled samples, corrected labels, duplicate removals, balancing metadata, visual-audit provenance, quality report, and before/after quality snapshots.
 
 - [ ] **Acceptance 8: The pitch is honest**
   - **Validation:** The team says DataForge improves dataset readiness, not trained model accuracy.

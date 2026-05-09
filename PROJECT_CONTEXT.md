@@ -6,7 +6,7 @@ DataForge is a hackathon product concept for AI Engineer Singapore.
 
 **DataForge is an adaptive image dataset repair loop: evaluate, labelize, deduplicate, balance, re-evaluate, export.**
 
-The winning demo should show a deliberately imbalanced, partially labeled image dataset, run Adaption Labs evaluation, surface missing labels, likely label mistakes, and duplicate images, apply approved labels, relabels, and duplicate removals, rebalance class weightage, run evaluation again, and display an improved quality score, label completeness score, duplicate issue count, consistency score, or balance metric. The cleaned labelized dataset and report are the climax.
+The winning demo should show a deliberately imbalanced, partially labeled image dataset, run a vision audit with seeded demo truth or GPT Vision/Gemini, evaluate the normalized repair manifest through an Adaption Labs-compatible quality loop where available, surface missing labels, likely label mistakes, and duplicate images, apply approved labels, relabels, and duplicate removals, rebalance class weightage, run evaluation again, and display an improved quality score, label completeness score, duplicate issue count, consistency score, or balance metric. The cleaned labelized dataset and report are the climax.
 
 Top demo features:
 
@@ -14,15 +14,15 @@ Top demo features:
 2. **Relabel:** flag wrong labels, such as a cat labeled as a dog, and preserve original-label provenance.
 3. **Deduplicate:** detect duplicate or near-duplicate images and remove approved duplicates from export.
 4. **Balance:** convert skewed distributions, such as 90 cats and 20 dogs, into a target balance plan such as 90 cats and 80 dogs using class weights, sampling recommendations, or optional additions.
-5. **Prove improvement:** use Adaption Labs to evaluate before and after, then export a clean labeled dataset and report.
+5. **Prove improvement:** evaluate the before/after repair manifest and derived quality metrics, then export a clean labeled dataset and report.
 
 30-second judge pitch:
 
-> DataForge turns messy image datasets into training-ready assets. Teams upload a partially labeled dataset, and DataForge uses Adaption Labs to evaluate quality, then helps fix missing labels, wrong labels, duplicates, and class imbalance. The output is a clean labeled dataset plus a report proving the before-and-after improvement. This matters because AI teams always need more high-quality labeled data, and that demand keeps growing every year.
+> DataForge turns messy image datasets into training-ready assets. Teams upload a partially labeled dataset, DataForge uses a vision audit to find missing labels, wrong labels, and duplicates, then evaluates the repair manifest and quality deltas through an Adaption Labs-compatible workflow. The output is a clean labeled dataset plus a report proving the before-and-after improvement. This matters because AI teams always need more high-quality labeled data, and that demand keeps growing every year.
 
 ## 1. Vision & Core Thesis
 
-**DataForge** is an intelligent dataset curator for ML engineers working with partially labeled image datasets. A user uploads images with incomplete, noisy, or incorrect labels; DataForge evaluates the dataset with Adaption Labs, identifies missing labels and likely mislabels, helps the user approve label fixes, balances class weightage or sample distribution, and exports a clean labeled dataset with a quality report.
+**DataForge** is an intelligent dataset curator for ML engineers working with partially labeled image datasets. A user uploads images with incomplete, noisy, or incorrect labels; DataForge uses seeded demo truth or GPT Vision/Gemini for image understanding, evaluates the normalized repair manifest and quality deltas, helps the user approve label fixes, balances class weightage or sample distribution, and exports a clean labeled dataset with a quality report.
 
 The core philosophy is simple: **DataForge is a closed-loop data quality system, not a model training platform.**
 
@@ -33,28 +33,29 @@ DataForge moves the quality loop earlier. A user uploads a partially labeled ima
 This distinction matters for the hackathon. DataForge should not promise "we improved model accuracy" unless a model is actually trained and evaluated. Instead, it should prove a more realistic claim:
 
 1. The original dataset had measurable quality issues: missing labels, wrong labels, duplicate images, and class imbalance.
-2. Adaption Labs evaluation identified or scored those issues where supported and provided the primary quality signal.
-3. GPT-5.5 translated those metrics and dataset metadata into an actionable label-quality and balancing report.
-4. The user reviewed missing-label suggestions and likely mislabeled samples, then approved corrected labels.
-5. DataForge produced a cleaned and labelized dataset manifest with balancing metadata.
-6. Adaption Labs evaluation showed the cleaned dataset improved on quality, balance, completeness, or consistency metrics.
+2. Seeded demo truth or GPT Vision/Gemini identified image-specific issues because Adaption Labs does not inspect image pixels directly.
+3. Adaption Labs, when used, evaluated the normalized tabular repair manifest and provided manifest-level quality signals where supported.
+4. GPT-5.5 translated the visual audit, quality metrics, and dataset metadata into an actionable label-quality and balancing report.
+5. The user reviewed missing-label suggestions and likely mislabeled samples, then approved corrected labels.
+6. DataForge produced a cleaned and labelized dataset manifest with balancing metadata.
+7. The second evaluation showed the cleaned dataset improved on quality, balance, completeness, or consistency metrics.
 
 The winning thesis is that dataset curation can become an **adaptive improvement loop**:
 
-1. Evaluate the dataset.
-2. Explain missing labels, likely wrong labels, duplicate images, and class imbalance.
+1. Normalize the image dataset into a repair manifest.
+2. Use seeded demo truth or GPT Vision/Gemini to explain missing labels, likely wrong labels, duplicate images, and class imbalance.
 3. Review and apply label completions, corrections, and duplicate removals.
 4. Balance the dataset through class weights, sampling recommendations, or optional generated/collected additions.
-5. Re-ingest the cleaned dataset.
-6. Evaluate again with Adaption Labs.
+5. Re-ingest or rebuild the cleaned repair manifest.
+6. Evaluate again with Adaption Labs where available, or the deterministic fallback quality adapter during the demo.
 7. Export a clean labeled, deduplicated dataset and report.
 
-DataForge should feel technical and credible. It should avoid the common hackathon trap of treating generated images as the product. The core value is labelization and dataset quality repair: every sample should end with a clear label status, every correction should preserve provenance, and every balancing decision should be tied to measured dataset gaps and a second Adaption Labs evaluation.
+DataForge should feel technical and credible. It should avoid the common hackathon trap of treating generated images as the product. The core value is labelization and dataset quality repair: every sample should end with a clear label status, every correction should preserve provenance, and every balancing decision should be tied to measured dataset gaps and a second quality evaluation.
 
 For the AI Engineer hackathon, DataForge should optimize for four judging moments:
 
-1. **Adaption Labs centrality:** the evaluation API must be the core source of dataset quality truth.
-2. **GPT-5.5 intelligence:** GPT-5.5 should explain metrics, detect likely issues, suggest label corrections, and produce structured repair plans.
+1. **Adaption Labs honesty:** use Adaption Labs only for what it can credibly do: normalized manifest ingestion/evaluation and quality snapshots, not direct image-pixel analysis.
+2. **GPT-5.5 or Gemini vision intelligence:** the vision model or seeded demo truth should detect likely image-label issues, suggest label corrections, and produce structured repair plans.
 3. **Balancing usefulness:** DataForge should produce a concrete balancing plan for underrepresented classes through weights, sampling recommendations, and optional targeted synthetic or collected additions.
 4. **Convex visibility:** the entire pipeline should be visible live through a realtime dashboard.
 
@@ -64,7 +65,14 @@ The prepared animal subset must stay intentionally imbalanced. Do not downsample
 
 ## 2. Core Positioning
 
-DataForge should be pitched as a **computer-vision dataset repair cockpit powered by Adaption Labs**, not as a replacement for Adaption Labs. Adaption Labs owns the broad dataset lifecycle and quality evaluation. DataForge owns the image-specific workflow: visual label review, missing-label completion, wrong-label correction, duplicate-image review/removal, class balancing, and exportable image-manifest provenance.
+DataForge should be pitched as a **computer-vision dataset repair cockpit with an Adaption Labs-compatible manifest quality loop**, not as a replacement for Adaption Labs. Adaption Labs owns broad tabular dataset lifecycle and quality evaluation where its API supports the input shape. DataForge owns the image-specific workflow: visual label review through seeded demo truth or GPT Vision/Gemini, missing-label completion, wrong-label correction, duplicate-image review/removal, class balancing, and exportable image-manifest provenance.
+
+Critical provider boundary:
+
+- Adaption Labs should not be described as reading, understanding, or analyzing image pixels in the MVP.
+- Image understanding comes from seeded demo truth first and GPT Vision/Gemini as the optional live implementation path.
+- Adaption Labs, if used live, receives a CSV/JSON repair manifest containing image keys or URLs, current labels, final labels, candidate labels, source metadata, and review decisions.
+- If the live Adaption path is not reliable, the UI should use a clearly internal deterministic fallback while the pitch focuses on DataForge's repair workflow and visual audit.
 
 ## 3. Comprehensive User Flow & Lifecycle
 
@@ -83,18 +91,18 @@ DataForge should be pitched as a **computer-vision dataset repair cockpit powere
 - **Relabeled Sample:** An original sample whose label was changed after user approval. This is distinct from a synthetic sample.
 - **Labelized Dataset:** The dataset after missing labels have been filled where possible and incorrect labels have been corrected or marked for manual review.
 - **Dataset Manifest:** A CSV or JSON file that maps samples to labels and metadata. For zip uploads, the manifest may be inferred from folder names in the MVP.
-- **Evaluation Snapshot:** A point-in-time Adaption Labs evaluation result for a dataset version.
-- **Quality Score:** The primary score returned by Adaption Labs or derived from its metrics. It should be displayed with the metric name and source.
+- **Evaluation Snapshot:** A point-in-time quality result for a dataset version, sourced from Adaption manifest evaluation where available or the deterministic demo adapter.
+- **Quality Score:** The primary score returned by the selected quality source. It should be displayed with the metric name and source.
 - **Gap:** A measurable issue in the dataset, such as an underrepresented class, missing label, missing scenario, duplicate sample, or label inconsistency.
 - **Balancing Plan:** A structured set of recommended class weights, sampling adjustments, or optional additions for underrepresented classes.
-- **Repair Plan:** A GPT-5.5-generated structured set of recommended actions based on Adaption Labs evaluation metrics, label issues, missing labels, and dataset metadata.
+- **Repair Plan:** A GPT-5.5-generated structured set of recommended actions based on manifest quality metrics, visual-audit issues, missing labels, and dataset metadata.
 - **Synthetic Generation Job:** Optional stretch Fal job that generates new samples for a specific underrepresented class or scenario.
 - **Synthetic Sample:** Optional generated sample tagged with its source provider, prompt, target class, and generation job ID.
 - **Corrected Dataset:** The source dataset after approved label completions and corrections.
 - **Balanced Dataset:** The labelized dataset plus class weights, sampling metadata, and optional approved additions for underrepresented classes.
 - **Augmented Dataset:** The corrected dataset plus optional approved synthetic samples and adaptations.
 - **Improvement Delta:** The comparison between baseline evaluation and final labelized or balanced evaluation.
-- **Quality Report:** A report containing Adaption Labs evaluation metrics, deterministic distribution metrics, label issue summary, balancing plan, and remaining manual review items.
+- **Quality Report:** A report containing source-labeled quality metrics, deterministic distribution metrics, label issue summary, balancing plan, and remaining manual review items.
 - **Export Bundle:** A downloadable clean labeled dataset package and report, optionally in Hugging Face-compatible format.
 
 ### 3.2 Roles
@@ -133,36 +141,36 @@ Edge cases:
 
 Important MVP constraint:
 
-The training intent should shape labelization, balancing recommendations, and optional addition prompts, but Adaption Labs evaluation should remain the objective metric source. GPT-5.5 should not invent final quality scores when an evaluation API metric exists.
+The training intent should shape labelization, balancing recommendations, and optional addition prompts, but objective metric sources must stay separate from LLM interpretation. GPT-5.5 should not invent final quality scores when a provider or deterministic metric exists.
 
 ### 3.5 Phase 3: Baseline Evaluation and Quality Report
 
-1. **Baseline Ingest:** The backend sends the source dataset or dataset metadata to Adaption Labs for registration or evaluation, depending on the available API shape.
-2. **Baseline Evaluate:** Adaption Labs returns dataset quality metrics. These may include completeness, balance, consistency, coverage, duplication, label confidence, or other provider-specific scores.
+1. **Baseline Manifest Build:** The backend converts the source image dataset into a tabular repair manifest with image keys or URLs, current labels, candidate labels, seeded defect markers, and review metadata.
+2. **Baseline Evaluate:** The app evaluates manifest quality using Adaption Labs where the API supports the CSV/JSON input shape, or a deterministic fallback snapshot during the demo. These metrics can include completeness, balance, consistency, coverage, duplicate row risk, or other manifest-level scores.
 3. **Convex Stage Updates:** The app writes stage transitions to Convex: ingest queued, ingest running, ingest complete, evaluate running, evaluate complete.
-4. **GPT-5.5 Report Generation:** GPT-5.5 receives the training intent, dataset summary, class distribution, sample previews, inferred or provider-supplied label-confidence signals, and Adaption Labs metrics. It returns a structured report.
+4. **GPT-5.5 Report Generation:** GPT-5.5 receives the training intent, dataset summary, class distribution, sample previews, seeded or GPT Vision/Gemini label-confidence signals, and quality metrics. It returns a structured report.
 5. **Quality Report UI:** The frontend renders score cards, class distribution charts, gap list, bias flags, label quality warnings, suspected mislabels, and ranked repair actions.
 
 The quality report should separate measured metrics from LLM interpretation:
 
-- **Measured:** values returned by Adaption Labs or deterministic dataset parsing.
-- **Inferred:** GPT-5.5 explanations, likely causes, bias hypotheses, and suggested actions.
+- **Measured:** values returned by Adaption Labs for the manifest where available, deterministic dataset parsing, or seeded fallback snapshots.
+- **Inferred:** GPT-5.5 explanations, GPT Vision/Gemini image-label suggestions where used, likely causes, bias hypotheses, and suggested actions.
 - **User-actionable:** generation jobs, relabeling suggestions, duplicate removal, class balancing.
 
 Edge cases:
 
-- **Adaption Labs API unavailable:** Use a thin mock adapter with clearly labeled demo metrics and keep the UI functional.
+- **Adaption Labs API unavailable or unsuitable for image input:** Use a thin mock adapter with clearly labeled demo metrics and keep the UI functional.
 - **Evaluation returns partial metrics:** Display available metrics and have GPT-5.5 explain only what is supported.
 - **GPT-5.5 JSON invalid:** Retry once with a repair prompt, then fall back to a minimal deterministic report.
 - **No gaps detected:** Show a healthy dataset state and recommend export or targeted manual review instead of forcing optional generation.
 
 ### 3.6 Phase 4: Label Completion, Relabeling, Deduplication, and Balancing Plan
 
-1. **Missing Label Queue:** DataForge identifies unlabeled samples and proposes labels from the allowed class taxonomy. For image classification, this can be shown as "current label: unlabeled, suggested label: cat" with confidence and rationale.
-2. **Label Issue Selection:** DataForge identifies likely mislabeled samples from Adaption Labs signals, deterministic checks, and GPT-5.5 interpretation. For image classification, this can be shown as "current label: dog, suggested label: cat" with confidence and rationale.
+1. **Missing Label Queue:** DataForge identifies unlabeled samples and proposes labels from the allowed class taxonomy using seeded demo truth first, with GPT Vision/Gemini as the optional live path. For image classification, this can be shown as "current label: unlabeled, suggested label: cat" with confidence and rationale.
+2. **Label Issue Selection:** DataForge identifies likely mislabeled samples from seeded defects, deterministic manifest checks, optional GPT Vision/Gemini outputs, and GPT-5.5 interpretation. For image classification, this can be shown as "current label: dog, suggested label: cat" with confidence and rationale.
 3. **Human Review:** User approves, rejects, or edits suggested label completions and corrections. MVP can support one-click accept/reject for obvious issues instead of building a full annotation suite.
 4. **Labelized Manifest Update:** Approved label changes update the dataset manifest and preserve original label, final label, reviewer action, timestamp, confidence source, and reason.
-5. **Duplicate Review:** DataForge flags exact or near-duplicate images using Adaption deduplication signals where available and deterministic local checks as fallback. User can keep or exclude duplicates from export.
+5. **Duplicate Review:** DataForge flags exact or near-duplicate images using seeded demo defects, file hash or perceptual-hash checks, and optional vision-model assistance. User can keep or exclude duplicates from export.
 6. **Class Balance Analysis:** DataForge recalculates class counts after labelization and duplicate removal, then identifies underrepresented classes.
 7. **Balancing Plan Creation:** DataForge produces a balancing plan with current count, target count, recommended class weight, recommended sampling strategy, and optional sample additions.
 8. **Optional Addition Review:** If the team uses Fal or external collection, user can review optional prompts or collection recommendations. This is not required for the core MVP.
@@ -183,9 +191,9 @@ Edge cases:
 1. **Labelized Dataset Assembly:** DataForge applies approved label completions and corrections to the manifest while preserving original labels for provenance.
 2. **Deduplicated Dataset Assembly:** DataForge excludes approved duplicate removals from the export manifest while preserving duplicate provenance.
 3. **Balanced Dataset Assembly:** DataForge attaches class weights, sampling metadata, and optional approved additions.
-4. **Adaption Labs Re-Ingest:** The clean labelized and deduplicated dataset is sent back into the Adaption Labs pipeline.
-5. **Adapt Stage:** Adaption Labs applies supported transformations, such as normalization, deduplication, balancing, validation, or provider-specific adaptation.
-6. **Second Evaluate Stage:** Adaption Labs evaluates the clean labelized, deduplicated, and balanced dataset.
+4. **Repair Manifest Rebuild:** The clean labelized and deduplicated dataset is converted into a final CSV/JSON repair manifest.
+5. **Adapt Stage:** Adaption Labs may process the manifest where supported; otherwise the deterministic adapter simulates the same stage for the demo timeline.
+6. **Second Evaluate Stage:** The app evaluates the clean labelized, deduplicated, and balanced manifest with the same metric source used for the baseline.
 7. **Improvement Delta:** The frontend compares baseline and post-repair evaluation snapshots.
 8. **Narrative Summary:** GPT-5.5 summarizes what improved, what remains weak, and what should happen next.
 
@@ -204,7 +212,7 @@ Edge cases:
 
 - **Score does not improve:** Show the honest result and explain likely reasons, such as ambiguous labels, unresolved manual review items, or metrics not sensitive to class balance.
 - **Evaluation worsens:** Flag the label changes or additions as harmful and let the user exclude them.
-- **Evaluation API only supports metadata:** Use deterministic distribution metrics as supplemental, but label them separately from Adaption Labs metrics.
+- **Evaluation API only supports metadata:** Use deterministic distribution metrics and vision-audit outputs as supplemental, and label every metric by source.
 
 ### 3.8 Phase 6: Realtime Dashboard and Review
 
@@ -390,7 +398,7 @@ Tracks suspected duplicate or near-duplicate images and review decisions.
 
 #### `evaluation_snapshots`
 
-Stores Adaption Labs metrics and derived metrics for each dataset version.
+Stores source-labeled provider metrics, deterministic metrics, and derived metrics for each dataset version.
 
 - `dataset_id` id
 - `version` enum: `baseline`, `labelized`, `balanced`, `augmented`
@@ -505,6 +513,8 @@ Recommended adapters:
 - `adaptionClient.getStatus(datasetId)`
 - `adaptionClient.getEvaluation(datasetId)`
 - `adaptionClient.downloadDataset(datasetId)`
+- `visionAuditClient.detectMissingAndWrongLabels(samples)`
+- `visionAuditClient.detectImageDuplicates(samples)`
 - `labelAuditClient.detectMissingAndWrongLabels(datasetSummary, samplePreviews)`
 - `duplicateClient.detectDuplicates(datasetSummary, samplePreviews)`
 - `duplicateClient.applyDuplicateDecisions(datasetId, approvedDecisions)`
@@ -517,12 +527,12 @@ Recommended adapters:
 - `storageClient.putFile(file)`
 - `storageClient.putGeneratedImage(urlOrBuffer)`
 
-Adaption Labs should have a demo-safe fallback adapter:
+Adaption Labs should have a demo-safe manifest adapter:
 
-- If real API access works, use it for dataset creation, bounded runs, evaluation polling, and final evaluation snapshots.
-- If endpoint signatures are unclear, use deterministic local metrics plus a clearly named `mockAdaptionClient` for the UI.
+- If real API access works, use it for manifest dataset creation, bounded runs, evaluation polling, and final evaluation snapshots.
+- If endpoint signatures are unclear or the input is image-native rather than manifest-native, use deterministic local metrics plus a clearly named `mockAdaptionClient` for the UI.
 - If API keys are missing or evaluation times out, preserve the live dashboard and show a clearly labeled fallback snapshot.
-- If sponsor judges ask, be transparent about which parts are live and which are mocked.
+- If sponsor judges ask, be transparent that Adaption did not inspect image pixels; the visual audit came from seeded demo truth or GPT Vision/Gemini.
 
 ### 4.6 GPT-5.5 Analysis Contract
 
@@ -533,8 +543,8 @@ GPT-5.5 should receive:
 - Class distribution.
 - Missing-label count and unlabeled sample previews.
 - Dataset sample previews.
-- Candidate label issues and label-confidence signals.
-- Adaption Labs baseline metrics.
+- Candidate label issues and label-confidence signals from seeded demo truth or GPT Vision/Gemini.
+- Adaption Labs baseline metrics where available, or deterministic fallback quality metrics.
 - Any deterministic parser warnings.
 
 GPT-5.5 should return strict JSON:
@@ -552,19 +562,26 @@ GPT-5.5 should return strict JSON:
 
 Key rule:
 
-GPT-5.5 can explain and recommend, but it should not fabricate provider metrics. If it estimates an impact or label confidence, label it as estimated. Suggested label corrections should require user approval before changing the dataset.
+GPT-5.5 can explain and recommend, but it should not fabricate provider metrics or claim that Adaption read the images. If it estimates an impact or label confidence, label it as estimated. Suggested label corrections should require user approval before changing the dataset.
 
-### 4.7 Adaption Labs Evaluation Contract
+### 4.7 Adaption Labs Manifest Evaluation Contract
 
-Adaption Labs is the primary sponsor target and the most important integration. Treat its API as the quality authority.
+Adaption Labs is the primary sponsor target and an important integration, but it should be used within its actual input limits. For the image MVP, Adaption Labs should be treated as a manifest-level dataset lifecycle and evaluation provider, not as the source of image-pixel understanding.
+
+Hard boundary:
+
+- Do not say Adaption Labs reads image datasets or visually detects cats, dogs, duplicates, or low-light scenarios.
+- Do say DataForge normalizes image datasets into a tabular repair manifest that can be evaluated, exported, and compared before/after.
+- Do say image understanding comes from seeded demo truth first, with GPT Vision/Gemini as the live implementation path if time allows.
+- Do label fallback metrics as DataForge demo metrics if the live Adaption API is not called.
 
 Required logical operations:
 
-- **Create dataset:** Create an Adaption dataset from a normalized manifest. The REST endpoint `POST /api/v1/datasets` supports file sources with `csv`, `json`, `jsonl`, or `parquet`, returning `dataset_id`, `status`, and presigned upload instructions.
+- **Create dataset:** Create an Adaption dataset from a normalized repair manifest. The REST endpoint `POST /api/v1/datasets` supports file sources with `csv`, `json`, `jsonl`, or `parquet`, returning `dataset_id`, `status`, and presigned upload instructions.
 - **Upload manifest:** Upload the manifest file to the presigned URL when using the file source flow.
-- **Run with column mapping:** Map DataForge manifest columns into Adaption roles such as `prompt`, `completion`, and `context`. For image labeling, use a fixed labeling instruction as `prompt`, label or final label as `completion`, and image URL/current label/candidate labels/metadata as `context`.
-- **Evaluate baseline:** Produce quality metrics for the source dataset, including label consistency, completeness, or quality where supported.
-- **Evaluate labelized/balanced dataset:** Produce quality metrics after approved label completions, label corrections, and balancing metadata.
+- **Run with column mapping:** Map DataForge manifest columns into Adaption roles such as `prompt`, `completion`, and `context`. For image datasets, use a fixed instruction as `prompt`, the current or final label as `completion`, and image URL/key, current label, candidate labels, seeded visual-audit result, and metadata as `context`.
+- **Evaluate baseline:** Produce quality metrics for the source manifest, including label completeness, consistency, or quality where supported.
+- **Evaluate labelized/balanced dataset:** Produce quality metrics after approved label completions, label corrections, duplicate decisions, and balancing metadata have been written back to the manifest.
 - **Export/download:** Download the resulting dataset or preserve the Adaption snapshot URL/metadata in the DataForge export bundle.
 
 Adaption Labs documentation notes:
@@ -580,11 +597,11 @@ The UI should expose these operations in the language of the product, even if th
 
 Important product rule:
 
-Do not require model training to show improvement. The improvement proof is the difference between baseline and labelized or balanced Adaption evaluation snapshots.
+Do not require model training to show improvement. The improvement proof is the difference between baseline and labelized or balanced quality snapshots, with every snapshot labeled by source: Adaption manifest evaluation, deterministic parser metric, seeded demo metric, or GPT Vision/Gemini estimate.
 
 ### 4.8 Optional Fal Synthetic Generation Contract
 
-Fal is optional for the aligned MVP. The core output is a clean labelized dataset and report. If the team uses Fal, it should generate only approved samples for specific underrepresented classes after Adaption Labs evaluation and balancing analysis show a concrete need.
+Fal is optional for the aligned MVP. The core output is a clean labelized dataset and report. If the team uses Fal, it should generate only approved samples for specific underrepresented classes after source-labeled quality evaluation and balancing analysis show a concrete need.
 
 Inputs:
 
@@ -642,8 +659,9 @@ Track for every dataset run:
 
 Hackathon cost controls & Demo Constraints:
 
-- **Strict 2-Minute Demo Rule:** Real-world CV processing takes 30+ minutes. To fit the demo format, **the entire pipeline will be mocked with pre-computed data.**
-- All backend processes (Adaption Labs evaluation, LLM label detection, deduplication, re-evaluation) must be simulated using artificial wait times, spinners, and progress visuals.
+- **Strict 2-Minute Demo Rule:** Real-world CV processing takes 30+ minutes. To fit the demo format, **the entire pipeline may be mocked with pre-computed data.**
+- All backend processes must be simulated using artificial wait times, spinners, and progress visuals unless a live call has already been proven reliable. This includes manifest evaluation, vision-model label detection, duplicate detection, and re-evaluation.
+- The demo must not imply that Adaption Labs inspected image pixels. Use seeded visual-audit results or GPT Vision/Gemini for image-specific findings.
 - Limit preview analysis to first 100 rows or 12 to 24 images.
 - Limit optional synthetic generation to 10 images per class by default.
 - Cap total optional generated images per dataset.
@@ -656,9 +674,9 @@ Hackathon cost controls & Demo Constraints:
 - Next.js on Vercel.
 - Convex realtime backend.
 - OpenAI GPT-5.5 structured quality report.
-- Adaption Labs dataset creation, bounded run, evaluation polling, and baseline/final quality snapshots.
-- AI-assisted label completion and relabeling queue for partially labeled image classification datasets.
-- Duplicate image review and removal queue, using Adaption deduplication signals where available and deterministic fallback checks where needed.
+- Optional Adaption Labs manifest dataset creation, bounded run, evaluation polling, and baseline/final quality snapshots if the live API path is stable.
+- Seeded visual-audit or GPT Vision/Gemini-assisted label completion and relabeling queue for partially labeled image classification datasets.
+- Duplicate image review and removal queue using seeded defects, file hashes, perceptual hashes, or GPT Vision/Gemini where available.
 - Class balancing plan with weights, sampling recommendations, and visible before/after distribution.
 - Recharts dashboard for before/after class distribution, missing-label delta, label issue delta, and quality delta.
 - Pre-prepared demo dataset with imbalance, missing labels, and known mislabeled examples.
@@ -676,7 +694,7 @@ Hackathon cost controls & Demo Constraints:
 
 ### 4.12 Implementation Constraints
 
-1. **Do not train a model during the hackathon demo:** It adds time, cost, and uncertainty. Use Adaption Labs evaluation API to show quality improvement.
+1. **Do not train a model during the hackathon demo:** It adds time, cost, and uncertainty. Use source-labeled quality metrics to show dataset readiness improvement.
 2. **Do not over-support dataset types:** Image classification is the best MVP path because missing labels, wrong labels, and class imbalance are easy to understand visually.
 3. **Do not hide mocked provider behavior:** If any adapter is mocked, label it internally and be ready to explain the fallback.
 4. **Do not let GPT-5.5 invent objective metrics:** Provider metrics and deterministic parser metrics must remain separate from LLM interpretation.
@@ -710,11 +728,11 @@ Recommended demo:
 
 Expected demo result:
 
-- Baseline evaluation flags missing labels, likely wrong labels, fox and owl underrepresentation, and low-light wildlife gaps.
+- Seeded visual-audit results or GPT Vision/Gemini flag missing labels, likely wrong labels, fox and owl underrepresentation, and low-light wildlife gaps.
 - GPT-5.5 explains why the suspected labels are risky, suggests labels and corrected labels for review, and summarizes the balancing plan.
 - User approves obvious completions and corrections, such as labeling an unknown owl image and moving a cat image out of the dog class.
 - DataForge applies class weights or sampling recommendations for foxes, owls, and low-light wildlife.
-- Final Adaption Labs evaluation improves labeling completeness, balance, consistency, or quality metrics.
+- Final quality snapshot improves labeling completeness, balance, consistency, or quality metrics, with source labels distinguishing Adaption manifest metrics from deterministic demo metrics.
 - Convex dashboard shows the full sequence live.
 
 This dataset is ideal because the problem is intuitive and safe. Judges can understand class imbalance, missing labels, and wrong labels immediately, and the before/after chart should show clear improvement. It also avoids the ethical, privacy, and validity risks of medical-image demos while preserving a serious data-quality story.
@@ -740,4 +758,4 @@ Recommended skills:
 
 Implementation rule:
 
-The core build remains: partially labeled animal image dataset upload, Convex-backed live pipeline, Adaption Labs evaluation, GPT-5.5 label and balance report, user-approved label completions and corrections, class balancing metadata, clean dataset export, and before/after quality visualization.
+The core build remains: partially labeled animal image dataset upload, Convex-backed live pipeline, seeded or GPT Vision/Gemini visual audit, source-labeled manifest quality evaluation, GPT-5.5 label and balance report, user-approved label completions and corrections, class balancing metadata, clean dataset export, and before/after quality visualization.
