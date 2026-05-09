@@ -4,9 +4,9 @@ DataForge is a hackathon product concept for AI Engineer Singapore.
 
 ## 0. Top-Line Demo Story
 
-**DataForge is an adaptive image dataset repair loop: evaluate, labelize, deduplicate, balance, re-evaluate, export.**
+**DataForge is an adaptive, iterative image dataset repair loop: evaluate, labelize, deduplicate, balance, re-evaluate, and loop (via a soft orchestrator) until a confidence score is met, then export.**
 
-The winning demo should show a deliberately imbalanced, partially labeled image dataset, run a vision audit with seeded demo truth or GPT Vision/Gemini, evaluate the normalized repair manifest through an Adaption Labs-compatible quality loop where available, surface missing labels, likely label mistakes, and duplicate images, apply approved labels, relabels, and duplicate removals, rebalance class weightage, run evaluation again, and display an improved quality score, label completeness score, duplicate issue count, consistency score, or balance metric. The cleaned labelized dataset and report are the climax.
+The winning demo should show a deliberately imbalanced, partially labeled image dataset, run a vision audit with seeded demo truth or GPT Vision/Gemini, evaluate the normalized repair manifest through an Adaption Labs-compatible quality loop where available, surface missing labels, likely label mistakes, and duplicate images, apply approved labels, relabels, and duplicate removals, rebalance class weightage, run evaluation again, and loop until improvement is satisfactory. The cleaned labelized dataset and report are the climax.
 
 Top demo features:
 
@@ -14,7 +14,7 @@ Top demo features:
 2. **Relabel:** flag wrong labels, such as a cat labeled as a dog, and preserve original-label provenance.
 3. **Deduplicate:** detect duplicate or near-duplicate images and remove approved duplicates from export.
 4. **Balance:** convert skewed distributions, such as 90 cats and 20 dogs, into a target balance plan such as 90 cats and 80 dogs using class weights, sampling recommendations, or optional additions.
-5. **Prove improvement:** evaluate the before/after repair manifest and derived quality metrics, then export a clean labeled dataset and report.
+5. **Prove improvement:** evaluate the before/after repair manifest and derived quality metrics, iterate via the soft orchestrator if needed, then export a clean labeled dataset (with renamed files) and report.
 
 30-second judge pitch:
 
@@ -38,17 +38,19 @@ This distinction matters for the hackathon. DataForge should not promise "we imp
 4. GPT-5.5 translated the visual audit, quality metrics, and dataset metadata into an actionable label-quality and balancing report.
 5. The user reviewed missing-label suggestions and likely mislabeled samples, then approved corrected labels.
 6. DataForge produced a cleaned and labelized dataset manifest with balancing metadata.
-7. The second evaluation showed the cleaned dataset improved on quality, balance, completeness, or consistency metrics.
+7. The second evaluation showed the cleaned dataset improved. A soft orchestrator checks a confidence score against a stopping criteria to determine if another iterative loop is needed.
+8. Export a clean labeled dataset (relabeling the filenames themselves), a deduplicated manifest, and a comprehensive report.
 
-The winning thesis is that dataset curation can become an **adaptive improvement loop**:
+The winning thesis is that dataset curation can become an **adaptive, iterative improvement loop**:
 
-1. Normalize the image dataset into a repair manifest.
+1. Normalize the image dataset into a repair manifest, identifying clusters (using folder names for the demo).
 2. Use seeded demo truth or GPT Vision/Gemini to explain missing labels, likely wrong labels, duplicate images, and class imbalance.
-3. Review and apply label completions, corrections, and duplicate removals.
+3. Review and apply label completions, corrections (ensuring they reflect the image), and duplicate removals.
 4. Balance the dataset through class weights, sampling recommendations, or optional generated/collected additions.
 5. Re-ingest or rebuild the cleaned repair manifest.
 6. Evaluate again with Adaption Labs where available, or the deterministic fallback quality adapter during the demo.
-7. Export a clean labeled, deduplicated dataset and report.
+7. Loop via a "soft orchestrator" if the improvement/confidence score does not meet the stopping criteria.
+8. Export a clean labeled, deduplicated dataset (relabeling the actual files) and report.
 
 DataForge should feel technical and credible. It should avoid the common hackathon trap of treating generated images as the product. The core value is labelization and dataset quality repair: every sample should end with a clear label status, every correction should preserve provenance, and every balancing decision should be tied to measured dataset gaps and a second quality evaluation.
 
@@ -104,7 +106,15 @@ Critical provider boundary:
 - **Balanced Dataset:** The labelized dataset plus class weights, sampling metadata, and optional approved additions for underrepresented classes.
 - **Augmented Dataset:** The corrected dataset plus optional approved synthetic samples and adaptations.
 - **Improvement Delta:** The comparison between baseline evaluation and final labelized or balanced evaluation.
-- **Quality Report:** A report containing source-labeled quality metrics, deterministic distribution metrics, label issue summary, balancing plan, and remaining manual review items.
+- **Quality Report / Visualizations:** A report containing source-labeled quality metrics, deterministic distribution metrics, label issue summary, balancing plan, and remaining manual review items. Specifically includes:
+  - How many times the repair loop was executed.
+  - Overall confidence score.
+  - Images added to balance.
+  - Labels corrected.
+  - Missing labels added.
+  - Duplicate images removed.
+  - Clusters identified (mocked via folder names).
+  - A React Flow visualization of the simulated model pipeline.
 - **Export Bundle:** A downloadable clean labeled dataset package and report, optionally in Hugging Face-compatible format.
 
 ### 3.2 Roles
@@ -259,7 +269,7 @@ DataForge should use a lean, hackathon-friendly architecture with one web app, C
 - **Styling:** Tailwind CSS with a dark, technical UI.
 - **Components:** shadcn/ui or lightweight custom components.
 - **Charts:** Recharts for class distribution, score trends, and before/after comparisons.
-- **Pipeline Visualization:** React Flow for a fixed, non-editable pipeline hero showing Upload -> Evaluate -> Labelize -> Deduplicate -> Balance -> Re-evaluate -> Export.
+- **Pipeline Visualization:** React Flow for a simulated model pipeline hero showing Upload -> Evaluate -> Labelize -> Deduplicate -> Balance -> Re-evaluate -> Loop (Soft Orchestrator) -> Export.
 - **Upload:** react-dropzone for file upload.
 - **Parsing:** Papa Parse for CSV, native JSON parsing, JSZip for ZIP, image metadata extraction where needed.
 - **Realtime Backend:** Convex for datasets, stage updates, events, missing labels, label issues, balancing plans, optional additions, and dashboard subscriptions.

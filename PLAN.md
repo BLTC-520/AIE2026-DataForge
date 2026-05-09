@@ -5,13 +5,14 @@ This document is the authoritative implementation plan for the DataForge hackath
 The product target is a credible, demo-safe loop:
 
 1. Load the animal image dataset (simulated "upload" using the local `data/` directory).
-2. Evaluate dataset quality.
+2. Evaluate dataset quality and identify clusters (using folder names for the demo).
 3. Detect likely label mistakes.
-4. Approve relabeling fixes.
+4. Approve relabeling fixes (ensuring they reflect the image itself).
 5. Detect and remove duplicate or near-duplicate images.
 6. Balance class weightage through class weights, sampling recommendations, or optional additions.
 7. Re-evaluate the clean labeled repair manifest with the same quality source used for baseline.
-8. Export the clean labelized dataset, manifest, and report.
+8. Loop via a "soft orchestrator" if the confidence score does not meet the stopping criteria.
+9. Export the clean labelized dataset (renaming the actual files), manifest, and comprehensive report.
 
 30-second judge pitch:
 
@@ -141,10 +142,11 @@ Provider boundary decision:
   - **Action:** Wire `QualityReportPanel`, `DistributionChart`, `DuplicateReviewPanel`, `BalancingPanel`, `DatasetExplorer`, and `ExportManifestButton` into the dashboard.
   - **Constraint:** Keep `app/page.tsx` thin. Use `DataForgeDemoApp` for orchestration.
 
-- [ ] **Step B2.2: Add the labelization, deduplication, and balancing stages to the live pipeline**
-  - **Action:** Update the stage flow to run Upload, Evaluate, Labelize, Deduplicate, Balance, Re-evaluate, Export.
-  - **Action:** Add events such as `labelize.started`, `missing_label.detected`, `label_issue.detected`, `label_decision.approved`, `duplicate.detected`, `duplicate.removed`, `balance_plan.created`, and `labelize.complete`.
-  - **Validation:** The UI can pause after labelization so the presenter can approve completions/corrections before continuing.
+- [ ] **Step B2.2: Add the labelization, deduplication, balancing, and looping stages to the live pipeline**
+  - **Action:** Update the stage flow to run Upload, Evaluate, Labelize, Deduplicate, Balance, Re-evaluate, Loop (Soft Orchestrator), Export.
+  - **Action:** Add events such as `labelize.started`, `missing_label.detected`, `label_issue.detected`, `label_decision.approved`, `duplicate.detected`, `duplicate.removed`, `balance_plan.created`, `loop.evaluated`, and `labelize.complete`.
+  - **Action:** Implement a React Flow visualization for the simulated model pipeline to show this iterative process.
+  - **Validation:** The UI can pause after labelization so the presenter can approve completions/corrections before continuing, and the orchestrator handles the confidence score evaluation.
 
 - [ ] **Step B2.3: Connect approved label decisions to downstream metrics**
   - **Action:** Apply Bazel's `applyLabelDecisions` before Joseph's metrics, balancing, final quality evaluation, and export helpers run.
@@ -270,7 +272,8 @@ Provider boundary decision:
 
 - [x] **Step 3.4: Build quality report panel (`components/dataforge/quality-report-panel.tsx`)**
   - **Action:** Show measured metrics separately from GPT-5.5 inferred recommendations and label every metric source: Adaption manifest evaluation, deterministic parser metric, seeded demo metric, or GPT Vision/Gemini estimate.
-  - **Action:** Include missing-label and relabeling language after Bazel's decisions are available: newly labeled samples, corrected labels, and remaining manual review risk.
+  - **Action:** Include specific loop metrics: how many times it was looped, confidence score, images added to balance, labels corrected, missing labels added, duplicate images removed, and clusters identified (mocked via folder names).
+  - **Action:** Include a React Flow visualization area simulating the model pipeline.
   - **Action:** Show quality, balance, completeness, consistency, missing-label delta, label issue delta, and duplicate issue delta.
 
 - [x] **Step 3.5: Build before/after chart (`components/dataforge/distribution-chart.tsx`)**
@@ -286,6 +289,7 @@ Provider boundary decision:
 
 - [x] **Step 3.7: Build export manifest button (`components/dataforge/export-manifest-button.tsx`)**
   - **Action:** Generate a JSON manifest with original samples, final labels, missing-label completions, corrected labels, duplicate removal decisions, balancing metadata, visual-audit provenance, baseline quality snapshot, and final quality snapshot.
+  - **Action:** Export a clean labeled dataset, which includes physically relabeling the output filenames themselves to match their final verified labels.
   - **Action:** Preserve label decision provenance in exported records.
   - **Constraint:** Component receives final dataset state via props. It does not recompute global state.
 
