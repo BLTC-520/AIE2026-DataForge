@@ -19,9 +19,28 @@ import type {
   BalancingPlan as DataForgeBalancingPlan,
   DatasetSample as DataForgeDatasetSample,
   DuplicateIssue as DataForgeDuplicateIssue,
+  LabelDecisionAction,
   LabelIssue as DataForgeLabelIssue,
   QualityReport as DataForgeQualityReport,
 } from "../../lib/dataforge/types";
+// Brian Phase 2 — real components (B2.1). Bazel's components are default-exports;
+// Joseph's are named exports. Helpers are pure and live-derive from local state.
+import LabelAuditPanel from "./label-audit-panel";
+import DuplicateReviewPanel from "./duplicate-review-panel";
+import DatasetExplorer from "./dataset-explorer";
+import { QualityReportPanel } from "./quality-report-panel";
+import { DistributionChart } from "./distribution-chart";
+import { BalancingPanel } from "./balancing-panel";
+import { ExportManifestButton } from "./export-manifest-button";
+import { applyLabelDecisions } from "../../lib/dataforge/label-audit";
+import { applyDuplicateDecisions, type DuplicateDecisionAction } from "../../lib/dataforge/duplicates";
+import { calculateDatasetMetrics } from "../../lib/dataforge/metrics";
+import { createBalancingPlan } from "../../lib/dataforge/balancing";
+import { DatasetUploader } from "./dataset-uploader";
+import {
+  revokeUploadedDataset,
+  type UploadedDataset,
+} from "../../lib/dataforge/zip-upload";
 
 type StageStatus = "queued" | "running" | "complete" | "error";
 type SourceType = "original" | "synthetic";
@@ -313,6 +332,23 @@ export function DataForgeDemoApp() {
   const [classFilter, setClassFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState<"all" | SourceType>("all");
 
+  // ── Brian Phase 2 (B2.3 / B2.4) ────────────────────────────────────────────
+  // Local approval state for the canonical label/duplicate review flow. The
+  // canonical pipeline (Upload → Evaluate → Labelize → Deduplicate → Balance →
+  // Re-evaluate → Export) is driven by these decisions; downstream metrics,
+  // balancing, and Adaption's "final" evaluation read from the result of
+  // applyLabelDecisions(...) → applyDuplicateDecisions(...). Decisions are
+  // intentionally NOT auto-applied on page load.
+  const [labelDecisions, setLabelDecisions] = useState<LabelDecisionAction[]>([]);
+  const [duplicateDecisions, setDuplicateDecisions] = useState<DuplicateDecisionAction[]>([]);
+  const [labelizationApproved, setLabelizationApproved] = useState(false);
+
+  // Real-ZIP upload (replaces the seeded dataset when set). The lib parses
+  // the ZIP, infers labels from per-class folder names, and runs SHA-1
+  // duplicate detection. The live derivation chain below reads from
+  // uploadedDataset when present, otherwise it falls back to the demo seed.
+  const [uploadedDataset, setUploadedDataset] = useState<UploadedDataset | null>(null);
+
   const createDemoDataset = useMutation(api.datasets.createDemoDataset);
   const setDatasetStatus = useMutation(api.datasets.setDatasetStatus);
   const setStageStatus = useMutation(api.datasets.setStageStatus);
@@ -412,6 +448,108 @@ export function DataForgeDemoApp() {
 
   const falSummary = useMemo(() => summarizeFalRuns(falJobRuns), [falJobRuns]);
 
+  // ── Brian Phase 2 (B2.3 / B2.4) ────────────────────────────────────────────
+  // Live derivation: labelize first, then deduplicate, then compute Joseph's
+  // metrics + balancing plan + final evaluation snapshot from the cleaned data.
+  // The Adaption "final" evaluation receives the labelized AND deduplicated
+  // manifest, never the stale originals.
+
+  // Source of truth for the live pipeline: real upload if present, demo otherwise.
+  const activeSamples = useMemo<DataForgeDatasetSample[]>(
+    () => uploadedDataset?.samples ?? demoSamples,
+    [uploadedDataset],
+  );
+  const activeLabelIssues = useMemo<DataForgeLabelIssue[]>(
+    () => uploadedDataset?.labelIssues ?? demoLabelIssues,
+    [uploadedDataset],
+  );
+  const activeDuplicateIssues = useMemo<DataForgeDuplicateIssue[]>(
+    () => uploadedDataset?.duplicateIssues ?? demoDuplicateIssues,
+    [uploadedDataset],
+  );
+
+  const labelizedSamples = useMemo(
+    () => applyLabelDecisions(activeSamples, labelDecisions),
+    [activeSamples, labelDecisions],
+  );
+
+  const cleanSamples = useMemo(
+    () => applyDuplicateDecisions(labelizedSamples, duplicateDecisions),
+    [labelizedSamples, duplicateDecisions],
+  );
+
+  const effectiveLabelIssues = useMemo<DataForgeLabelIssue[]>(() => {
+    if (labelDecisions.length === 0) return activeLabelIssues;
+    const decisionByIssue = new Map(labelDecisions.map((d) => [d.issueId, d] as const));
+    return activeLabelIssues.map((issue) => {
+      const decision = decisionByIssue.get(issue.id);
+      if (!decision) return issue;
+      const status: DataForgeLabelIssue["status"] =
+        decision.action === "manual_review"
+          ? "manual_review"
+          : decision.action === "reject"
+            ? "rejected"
+            : "accepted";
+      return { ...issue, status, reviewedAt: decision.reviewedAt };
+    });
+  }, [activeLabelIssues, labelDecisions]);
+
+  const effectiveDuplicateIssues = useMemo<DataForgeDuplicateIssue[]>(() => {
+    if (duplicateDecisions.length === 0) return activeDuplicateIssues;
+    const decisionByIssue = new Map(duplicateDecisions.map((d) => [d.issueId, d] as const));
+    return activeDuplicateIssues.map((issue) => {
+      const decision = decisionByIssue.get(issue.id);
+      if (!decision) return issue;
+      const status: DataForgeDuplicateIssue["status"] =
+        decision.action === "manual_review"
+          ? "manual_review"
+          : decision.action === "remove"
+            ? "removed"
+            : "kept";
+      return { ...issue, status, reviewedAt: decision.reviewedAt };
+    });
+  }, [activeDuplicateIssues, duplicateDecisions]);
+
+  const liveBaselineMetrics = useMemo(
+    () => calculateDatasetMetrics(activeSamples, activeLabelIssues, activeDuplicateIssues),
+    [activeSamples, activeLabelIssues, activeDuplicateIssues],
+  );
+
+  const liveFinalMetrics = useMemo(
+    () => calculateDatasetMetrics(cleanSamples, effectiveLabelIssues, effectiveDuplicateIssues),
+    [cleanSamples, effectiveLabelIssues, effectiveDuplicateIssues],
+  );
+
+  // Balancing plan is generated AFTER labelization is approved (B2.3 ordering).
+  // Until then, surface the seeded plan so the panel still has content.
+  const liveBalancingPlan = useMemo<DataForgeBalancingPlan[]>(
+    () => (labelizationApproved ? createBalancingPlan(cleanSamples) : demoBalancingPlan),
+    [labelizationApproved, cleanSamples],
+  );
+
+  // Adaption "final" snapshot — same shape as the seeded snapshot, but the
+  // class distribution is recomputed from the cleaned (labelized + deduped)
+  // sample list. Quality/balance/etc scores stay seeded for the demo cadence.
+  const liveFinalEvaluation = useMemo<DataForgeEvaluationSnapshot>(
+    () => ({
+      ...demoFinalEvaluation,
+      classDistribution: liveFinalMetrics.classDistribution,
+      balanceScore: liveFinalMetrics.balanceScore ?? demoFinalEvaluation.balanceScore,
+      completenessScore: liveFinalMetrics.completenessScore ?? demoFinalEvaluation.completenessScore,
+    }),
+    [liveFinalMetrics],
+  );
+
+  const decisionStats = useMemo(
+    () => ({
+      acceptedLabels: labelDecisions.filter((d) => d.action === "accept" || d.action === "edit").length,
+      rejectedLabels: labelDecisions.filter((d) => d.action === "reject").length,
+      manualReview: labelDecisions.filter((d) => d.action === "manual_review").length,
+      duplicatesRemoved: duplicateDecisions.filter((d) => d.action === "remove").length,
+    }),
+    [labelDecisions, duplicateDecisions],
+  );
+
   const fallbackBanner = useMemo(() => {
     if (activeDatasetId && convexUnavailable) {
       return "Convex backend not reachable. Showing local state from in-memory workflow.";
@@ -469,6 +607,108 @@ export function DataForgeDemoApp() {
     setEvents((current) => [{ id: Date.now() + Math.random(), name, message, time }, ...current]);
   }
 
+  // ── Brian Phase 2 (B2.2 / B2.3) ────────────────────────────────────────────
+  // Label-decision callbacks. Each emits a named event from the canonical set
+  // (`label_decision.approved`, `label_issue.detected`, etc.) and updates
+  // local state, which re-derives metrics and the balancing plan.
+
+  function recordLabelDecision(action: LabelDecisionAction, eventName: string, message: string) {
+    setLabelDecisions((current) => {
+      const filtered = current.filter((d) => d.issueId !== action.issueId);
+      return [...filtered, action];
+    });
+    logEvent(eventName, message);
+  }
+
+  function handleApproveLabel(issueId: string) {
+    const issue = effectiveLabelIssues.find((i) => i.id === issueId);
+    if (!issue) return;
+    recordLabelDecision(
+      {
+        issueId,
+        action: "accept",
+        finalLabel: issue.suggestedLabel ?? issue.currentLabel,
+        reviewer: "presenter",
+        reviewedAt: Date.now(),
+      },
+      "label_decision.approved",
+      `Approved ${issue.issueType.replace("_", " ")} for ${issue.sampleKey} → ${issue.suggestedLabel ?? "(no change)"}.`,
+    );
+    if (!labelizationApproved) {
+      setLabelizationApproved(true);
+      logEvent("labelize.complete", "Labelization stage complete; balancing plan regenerated from cleaned samples.");
+      logEvent("balance_plan.created", "Balancing plan derived from labelized + deduplicated samples.");
+    }
+  }
+
+  function handleRejectLabel(issueId: string) {
+    const issue = effectiveLabelIssues.find((i) => i.id === issueId);
+    if (!issue) return;
+    recordLabelDecision(
+      { issueId, action: "reject", reviewer: "presenter", reviewedAt: Date.now() },
+      "label_decision.approved",
+      `Rejected suggestion for ${issue.sampleKey}; original label preserved.`,
+    );
+  }
+
+  function handleManualReviewLabel(issueId: string) {
+    const issue = effectiveLabelIssues.find((i) => i.id === issueId);
+    if (!issue) return;
+    recordLabelDecision(
+      { issueId, action: "manual_review", reviewer: "presenter", reviewedAt: Date.now() },
+      "label_decision.approved",
+      `Routed ${issue.sampleKey} to manual review queue.`,
+    );
+  }
+
+  function handleEditLabel(issueId: string, finalLabel: string) {
+    const issue = effectiveLabelIssues.find((i) => i.id === issueId);
+    if (!issue) return;
+    recordLabelDecision(
+      { issueId, action: "edit", finalLabel, reviewer: "presenter", reviewedAt: Date.now() },
+      "label_decision.approved",
+      `Edited final label for ${issue.sampleKey} → ${finalLabel}.`,
+    );
+  }
+
+  function recordDuplicateDecision(action: DuplicateDecisionAction, eventName: string, message: string) {
+    setDuplicateDecisions((current) => {
+      const filtered = current.filter((d) => d.issueId !== action.issueId);
+      return [...filtered, action];
+    });
+    logEvent(eventName, message);
+  }
+
+  function handleRemoveDuplicate(issueId: string) {
+    const issue = effectiveDuplicateIssues.find((i) => i.id === issueId);
+    if (!issue) return;
+    recordDuplicateDecision(
+      { issueId, action: "remove", reviewer: "presenter", reviewedAt: Date.now() },
+      "duplicate.removed",
+      `Removed ${issue.sampleKey} (matches ${issue.duplicateOfSampleKey}).`,
+    );
+  }
+
+  function handleKeepDuplicate(issueId: string) {
+    const issue = effectiveDuplicateIssues.find((i) => i.id === issueId);
+    if (!issue) return;
+    recordDuplicateDecision(
+      { issueId, action: "keep", reviewer: "presenter", reviewedAt: Date.now() },
+      "duplicate.detected",
+      `Kept ${issue.sampleKey} despite ${(issue.similarityScore ?? 0).toFixed(2)} similarity to ${issue.duplicateOfSampleKey}.`,
+    );
+  }
+
+  function handleManualReviewDuplicate(issueId: string) {
+    const issue = effectiveDuplicateIssues.find((i) => i.id === issueId);
+    if (!issue) return;
+    recordDuplicateDecision(
+      { issueId, action: "manual_review", reviewer: "presenter", reviewedAt: Date.now() },
+      "duplicate.detected",
+      `Routed duplicate ${issue.sampleKey} to manual review.`,
+    );
+  }
+
   async function logAndPersistEvent(
     level: "info" | "warning" | "error" | "success",
     eventName: string,
@@ -494,8 +734,71 @@ export function DataForgeDemoApp() {
     }
   }
 
+  function resetDecisionsAndDerived() {
+    setLabelDecisions([]);
+    setDuplicateDecisions([]);
+    setLabelizationApproved(false);
+  }
+
+  function handleUploadLoaded(uploaded: UploadedDataset) {
+    if (analysisRunning) return;
+    // Release URLs from any previous upload before swapping in the new one.
+    if (uploadedDataset) revokeUploadedDataset(uploadedDataset);
+
+    setActiveDatasetId(null);
+    setUploadedDataset(uploaded);
+    setDatasetLoaded(true);
+    setAnalysisComplete(false);
+    setVisibleSynthetic([]);
+    setStageStatuses({ ...makeQueuedStages(), upload: "complete" });
+    setMetrics(null);
+    setReportMode("baseline");
+    setQualityReport(null);
+    setQualityReportSource("local-fallback");
+    setQualityReportHasData(false);
+    setEvents([]);
+    setRelabelJobs([]);
+    setFalJobRuns([]);
+    setConvexUnavailable(false);
+    setClassFilter("all");
+    setSourceFilter("all");
+    resetDecisionsAndDerived();
+
+    logEvent(
+      "dataset.uploaded",
+      `Parsed ${uploaded.datasetName}: ${uploaded.samples.length} samples, ${
+        Object.keys(uploaded.classDistribution).length
+      } classes, ${uploaded.duplicateIssues.length} duplicate(s) detected by file-hash, ${
+        uploaded.labelIssues.length
+      } missing label(s).`,
+    );
+    if (uploaded.warnings.length > 0) {
+      logEvent("dataset.warnings", `Parser warnings: ${uploaded.warnings.length}. First: ${uploaded.warnings[0]}`);
+    }
+  }
+
+  function handleUploadError(message: string) {
+    logEvent("dataset.upload_error", message);
+  }
+
+  // Release object URLs created by JSZip when the page unmounts or the
+  // active upload is swapped out via a fresh upload (handled above).
+  useEffect(() => {
+    return () => {
+      if (uploadedDataset) revokeUploadedDataset(uploadedDataset);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function loadDemoDataset() {
     if (analysisRunning) return;
+
+    // Drop any uploaded dataset and revert to seeded demo.
+    if (uploadedDataset) {
+      revokeUploadedDataset(uploadedDataset);
+      setUploadedDataset(null);
+    }
+    resetDecisionsAndDerived();
 
     setActiveDatasetId(null);
     setDatasetLoaded(true);
@@ -901,15 +1204,11 @@ export function DataForgeDemoApp() {
                   onChange={(event) => setTrainingIntent(event.target.value)}
                 />
 
-                <button className="dropzone" type="button" onClick={loadDemoDataset}>
-                  <span className="drop-icon" aria-hidden="true">
-                    +
-                  </span>
-                  <span>
-                    <strong>Drop dataset ZIP</strong>
-                    <small>Mock upload accepts the seeded animal set for this teammate preview.</small>
-                  </span>
-                </button>
+                <DatasetUploader
+                  onLoaded={handleUploadLoaded}
+                  onError={handleUploadError}
+                  disabled={analysisRunning}
+                />
 
                 <div className="action-row">
                   <button
@@ -1071,15 +1370,81 @@ export function DataForgeDemoApp() {
             />
           </section>
 
-          <FeatureIntegrationSlots
-            samples={demoSamples}
-            labelIssues={demoLabelIssues}
-            duplicateIssues={demoDuplicateIssues}
-            balancingPlan={demoBalancingPlan}
-            baselineEvaluation={demoBaselineEvaluation}
-            finalEvaluation={demoFinalEvaluation}
-            qualityReport={demoQualityReport}
-          />
+          {/* Brian Phase 2 (B2.1) — canonical 7-stage integration band.
+              Label review → duplicate review → balancing → quality report → export.
+              Adaption is manifest-level only; visual findings come from seeded
+              demo truth or a vision model elsewhere in the pipeline. */}
+          <section
+            className="dashboard-band"
+            id="integration"
+            aria-label="Canonical pipeline integration band"
+          >
+            <div className="section-heading">
+              <span>Canonical pipeline</span>
+              <h2>Label · Deduplicate · Balance · Re-evaluate · Export</h2>
+            </div>
+
+            <div className="integration-grid" style={{ display: "grid", gap: "1.25rem", gridTemplateColumns: "minmax(0, 1fr)" }}>
+              <LabelAuditPanel
+                samples={demoSamples}
+                labelIssues={effectiveLabelIssues}
+                onApprove={handleApproveLabel}
+                onReject={handleRejectLabel}
+                onManualReview={handleManualReviewLabel}
+                onEditLabel={handleEditLabel}
+              />
+
+              <DuplicateReviewPanel
+                samples={labelizedSamples}
+                duplicateIssues={effectiveDuplicateIssues}
+                onRemove={handleRemoveDuplicate}
+                onKeep={handleKeepDuplicate}
+                onManualReview={handleManualReviewDuplicate}
+              />
+
+              <BalancingPanel
+                balancingPlan={liveBalancingPlan}
+                classColors={classColors}
+              />
+
+              <QualityReportPanel
+                baselineEvaluation={demoBaselineEvaluation}
+                finalEvaluation={liveFinalEvaluation}
+                qualityReport={demoQualityReport}
+                baselineMetrics={liveBaselineMetrics}
+                finalMetrics={liveFinalMetrics}
+              />
+
+              <DatasetExplorer
+                samples={cleanSamples}
+                labelIssues={effectiveLabelIssues}
+                duplicateIssues={effectiveDuplicateIssues}
+              />
+
+              <ExportManifestButton
+                samples={cleanSamples}
+                labelIssues={effectiveLabelIssues}
+                duplicateIssues={effectiveDuplicateIssues}
+                balancingPlan={liveBalancingPlan}
+                baselineEvaluation={demoBaselineEvaluation}
+                finalEvaluation={liveFinalEvaluation}
+                qualityReport={demoQualityReport}
+                datasetName="dataforge-clean-dataset"
+                trainingIntent={trainingIntent}
+                disabled={
+                  decisionStats.acceptedLabels === 0 &&
+                  decisionStats.duplicatesRemoved === 0 &&
+                  !analysisComplete
+                }
+                onExported={(filename) =>
+                  logEvent(
+                    "reevaluate.complete",
+                    `Exported ${filename}: provenance + Adaption snapshots embedded.`,
+                  )
+                }
+              />
+            </div>
+          </section>
 
           <section className="split-section" id="quality">
             <div className="quality-panel">
@@ -1259,117 +1624,13 @@ export function DataForgeDemoApp() {
   );
 }
 
-type FeatureSlotProps = {
-  samples: DataForgeDatasetSample[];
-  labelIssues: DataForgeLabelIssue[];
-  duplicateIssues: DataForgeDuplicateIssue[];
-  balancingPlan: DataForgeBalancingPlan[];
-  baselineEvaluation: DataForgeEvaluationSnapshot;
-  finalEvaluation: DataForgeEvaluationSnapshot;
-  qualityReport: DataForgeQualityReport;
-};
-
-function FeatureIntegrationSlots(props: FeatureSlotProps) {
-  return (
-    <section className="dashboard-band" aria-label="Parallel feature integration slots">
-      <div className="section-heading">
-        <span>Integration slots</span>
-        <h2>Parallel feature handoff surface</h2>
-      </div>
-      <div className="job-grid">
-        <LabelAuditPanel samples={props.samples} labelIssues={props.labelIssues} />
-        <DuplicateReviewPanel samples={props.samples} duplicateIssues={props.duplicateIssues} />
-        <QualityReportPanel
-          baselineEvaluation={props.baselineEvaluation}
-          finalEvaluation={props.finalEvaluation}
-          qualityReport={props.qualityReport}
-        />
-        <BalancingPanel balancingPlan={props.balancingPlan} />
-        <DatasetExplorer samples={props.samples} />
-        <ExportManifestButton
-          samples={props.samples}
-          labelIssues={props.labelIssues}
-          duplicateIssues={props.duplicateIssues}
-          balancingPlan={props.balancingPlan}
-          baselineEvaluation={props.baselineEvaluation}
-          finalEvaluation={props.finalEvaluation}
-          qualityReport={props.qualityReport}
-        />
-      </div>
-    </section>
-  );
-}
-
-function LabelAuditPanel({
-  samples,
-  labelIssues,
-}: {
-  samples: DataForgeDatasetSample[];
-  labelIssues: DataForgeLabelIssue[];
-}) {
-  return <IntegrationSlot title="LabelAuditPanel" detail={`${labelIssues.length} issues across ${samples.length} seeded samples`} />;
-}
-
-function DuplicateReviewPanel({
-  duplicateIssues,
-}: {
-  samples: DataForgeDatasetSample[];
-  duplicateIssues: DataForgeDuplicateIssue[];
-}) {
-  return <IntegrationSlot title="DuplicateReviewPanel" detail={`${duplicateIssues.length} duplicate candidates ready for review`} />;
-}
-
-function QualityReportPanel({
-  baselineEvaluation,
-  finalEvaluation,
-}: {
-  baselineEvaluation: DataForgeEvaluationSnapshot;
-  finalEvaluation: DataForgeEvaluationSnapshot;
-  qualityReport: DataForgeQualityReport;
-}) {
-  return <IntegrationSlot title="QualityReportPanel" detail={`${baselineEvaluation.qualityScore} to ${finalEvaluation.qualityScore} quality delta`} />;
-}
-
-function BalancingPanel({
-  balancingPlan,
-}: {
-  balancingPlan: DataForgeBalancingPlan[];
-}) {
-  return <IntegrationSlot title="BalancingPanel" detail={`${balancingPlan.length} class recommendations seeded`} />;
-}
-
-function DatasetExplorer({
-  samples,
-}: {
-  samples: DataForgeDatasetSample[];
-}) {
-  return <IntegrationSlot title="DatasetExplorer" detail={`${samples.length} records with label provenance`} />;
-}
-
-function ExportManifestButton({
-  samples,
-}: {
-  samples: DataForgeDatasetSample[];
-  labelIssues: DataForgeLabelIssue[];
-  duplicateIssues: DataForgeDuplicateIssue[];
-  balancingPlan: DataForgeBalancingPlan[];
-  baselineEvaluation: DataForgeEvaluationSnapshot;
-  finalEvaluation: DataForgeEvaluationSnapshot;
-  qualityReport: DataForgeQualityReport;
-}) {
-  return <IntegrationSlot title="ExportManifestButton" detail={`${samples.length} export records available after integration`} />;
-}
-
-function IntegrationSlot({ title, detail }: { title: string; detail: string }) {
-  return (
-    <article className="empty-state">
-      <span>
-        <strong>{title}</strong>
-        {detail}
-      </span>
-    </article>
-  );
-}
+// Brian Phase 2 (B2.1) — the inline FeatureIntegrationSlots placeholder and
+// the per-component stubs (LabelAuditPanel, DuplicateReviewPanel, ...,
+// IntegrationSlot) were removed. Real components from
+// `components/dataforge/{label-audit,duplicate-review,dataset-explorer,
+// quality-report,distribution-chart,balancing,export-manifest}-{panel,button}.tsx`
+// are now imported at the top of this file and wired into the canonical
+// pipeline integration band rendered inside DataForgeDemoApp().
 
 function MetricTile({
   label,
@@ -1506,43 +1767,10 @@ function FalSummaryCard({
   );
 }
 
-function DistributionChart({
-  before,
-  after,
-}: {
-  before: Record<string, number>;
-  after: Record<string, number>;
-}) {
-  const max = Math.max(...Object.values(before), ...Object.values(after), 1);
-
-  return (
-    <div className="bar-chart">
-      {Object.keys(before).map((className) => {
-        const beforeCount = before[className];
-        const afterCount = after[className] ?? beforeCount;
-        const beforeWidth = Math.max(2, (beforeCount / max) * 100);
-        const afterWidth = Math.max(2, (afterCount / max) * 100);
-
-        return (
-          <div className="bar-row" key={className}>
-            <span className="bar-label">{className}</span>
-            <span className="bar-pair">
-              <span className="bar-track">
-                <span className="bar-fill before" style={{ width: `${beforeWidth}%` }} />
-              </span>
-              <span className="bar-track">
-                <span className="bar-fill after" style={{ width: `${afterWidth}%` }} />
-              </span>
-            </span>
-            <span className="bar-value">
-              {beforeCount}/{afterCount}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+// Brian Phase 2 (B2.1) — the inline DistributionChart was removed; the real
+// dependency-free component lives at ./distribution-chart.tsx and is imported
+// at the top of this file. The site that previously rendered this stub
+// (the chart-panel inside the quality split-section) now uses the real one.
 
 function JobCard({
   job,
