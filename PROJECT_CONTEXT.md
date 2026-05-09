@@ -2,6 +2,24 @@
 
 DataForge is a hackathon product concept for AI Engineer Singapore.
 
+## 0. Top-Line Demo Story
+
+**DataForge is an adaptive image dataset repair loop: evaluate, labelize, deduplicate, balance, re-evaluate, export.**
+
+The winning demo should show a deliberately imbalanced, partially labeled image dataset, run Adaption Labs evaluation, surface missing labels, likely label mistakes, and duplicate images, apply approved labels, relabels, and duplicate removals, rebalance class weightage, run evaluation again, and display an improved quality score, label completeness score, duplicate issue count, consistency score, or balance metric. The cleaned labelized dataset and report are the climax.
+
+Top demo features:
+
+1. **Labelize:** detect unlabeled images, suggest labels, and let a human approve them.
+2. **Relabel:** flag wrong labels, such as a cat labeled as a dog, and preserve original-label provenance.
+3. **Deduplicate:** detect duplicate or near-duplicate images and remove approved duplicates from export.
+4. **Balance:** convert skewed distributions, such as 90 cats and 20 dogs, into a target balance plan such as 90 cats and 80 dogs using class weights, sampling recommendations, or optional additions.
+5. **Prove improvement:** use Adaption Labs to evaluate before and after, then export a clean labeled dataset and report.
+
+30-second judge pitch:
+
+> DataForge turns messy image datasets into training-ready assets. Teams upload a partially labeled dataset, and DataForge uses Adaption Labs to evaluate quality, then helps fix missing labels, wrong labels, duplicates, and class imbalance. The output is a clean labeled dataset plus a report proving the before-and-after improvement. This matters because AI teams always need more high-quality labeled data, and that demand keeps growing every year.
+
 ## 1. Vision & Core Thesis
 
 **DataForge** is an intelligent dataset curator for ML engineers working with partially labeled image datasets. A user uploads images with incomplete, noisy, or incorrect labels; DataForge evaluates the dataset with Adaption Labs, identifies missing labels and likely mislabels, helps the user approve label fixes, balances class weightage or sample distribution, and exports a clean labeled dataset with a quality report.
@@ -42,52 +60,9 @@ For the AI Engineer hackathon, DataForge should optimize for four judging moment
 
 The MVP should focus on one clean dataset type: **partially labeled animal image classification datasets**. Supporting CSV, JSON, and arbitrary images is useful later, but a 7-hour build should prioritize a pre-prepared animal classifier demo with deliberate class imbalance, missing labels, and obvious mislabeled samples such as a cat image placed in the dog class. Animal classes are visually obvious, easy for judges to understand, and ideal for showing label completion, relabeling, and balancing without training a model.
 
-## 2. Market Context & Competitive Differentiators
+## 2. Core Positioning
 
-Dataset quality is one of the highest-leverage problems in applied AI. Model architectures change, but data quality remains a bottleneck. Teams spend large amounts of time collecting, labeling, cleaning, deduplicating, balancing, synthesizing, and documenting data before any model can be trusted.
-
-The market has many tools, but they are usually fragmented across the dataset lifecycle.
-
-Common buckets include:
-
-1. **Annotation platforms:** Labelbox, Scale, CVAT, Label Studio, and similar tools help teams label data, review annotations, and manage labeling workflows.
-2. **Dataset management and versioning:** DVC, Weights & Biases Artifacts, LakeFS, Hugging Face Datasets, and data catalogs help store, version, and reproduce datasets.
-3. **Computer vision dataset platforms:** Roboflow and related tools help with image upload, annotation, augmentation, export formats, and deployment workflows.
-4. **Synthetic data vendors:** Gretel, Mostly AI, Synthesis AI, and model-specific generation workflows create synthetic data, but they may not be tied to a specific measured gap in the user's current dataset.
-5. **Data quality and observability systems:** Great Expectations, WhyLabs, Evidently, and Monte Carlo focus on validation, drift, and data quality checks, often more for production pipelines than rapid training-set repair.
-6. **Manual notebooks and scripts:** Many ML engineers still use Python notebooks, pandas, augmentation libraries, and ad hoc scripts to inspect datasets and patch gaps.
-
-The gap DataForge targets is the space between evaluation, explanation, labelization, and dataset balancing. Many tools can label data. Many tools can generate data. Many tools can chart data. Fewer tools provide a fast loop where partially labeled image datasets are evaluated, missing labels are filled, wrong labels are reviewed, imbalance is repaired, and the cleaned dataset is evaluated again in one product flow.
-
-**Where DataForge wins:**
-
-1. **Evaluation-first workflow:** Adaption Labs evaluation is the anchor. The product does not ask judges to trust a pretty chart or an LLM's opinion. It shows a measured baseline and a measured post-repair state.
-2. **No model training required:** DataForge proves dataset improvement without spending hackathon time training a model. This avoids slow, flaky, GPU-dependent demos.
-3. **Intent-aware analysis:** The user describes what they want to train. GPT-5.5 interprets the dataset relative to that objective, so the gap report is not generic. A dataset for "cracked pavement detection at night" has different quality needs than a dataset for "daytime road surface classification."
-4. **AI-assisted labelization:** DataForge highlights unlabeled samples and likely mislabeled examples, then suggests labels or corrected labels, such as a cat image currently assigned to the dog class. The user stays in control by approving or rejecting corrections before they affect the dataset.
-5. **Balancing plan:** DataForge calculates class imbalance and recommends class weights, sampling changes, or optional targeted additions for underrepresented classes. Do not add data where the dataset is already healthy.
-6. **Realtime pipeline visibility:** Convex turns a backend pipeline into a live operational interface. Judges can watch ingest, evaluate, labelize, balance, and re-evaluate stages progress without refreshing.
-7. **Before/after quality delta:** The central UI primitive is a comparison: original dataset versus cleaned labeled dataset. Counts, distribution, score, missing labels, label issues, and recommendations should visibly change.
-8. **Exportable dataset artifact:** The architecture should treat the cleaned dataset as a real artifact with source metadata, original labels, final labels, label correction history, balancing metadata, and evaluation snapshots.
-
-DataForge should not compete as a full annotation suite or full MLOps platform. It should compete as a **pre-training dataset repair cockpit**.
-
-Primary users:
-
-1. **ML engineers:** Need to catch data issues before training or fine-tuning.
-2. **Computer vision builders:** Need enough image diversity for prototype classifiers and detectors.
-3. **Research scientists:** Need quick audits of experimental datasets and coverage gaps.
-4. **Data annotation leads:** Need to prioritize which labels, classes, or edge cases require attention.
-5. **Startup AI teams:** Need good-enough datasets quickly without long collection cycles.
-6. **Hackathon builders:** Need credible datasets for demos without spending days collecting data.
-
-Primary hackathon positioning:
-
-**DataForge is an adaptive image dataset repair loop: evaluate, labelize, deduplicate, balance, re-evaluate, export.**
-
-The winning demo should show a deliberately imbalanced, partially labeled image dataset, run Adaption Labs evaluation, surface missing labels, likely label mistakes, and duplicate images, apply approved labels, relabels, and duplicate removals, rebalance class weightage, run evaluation again, and display an improved quality score, label completeness score, duplicate issue count, consistency score, or balance metric. The cleaned labelized dataset and report are the climax.
-
-Adaption Labs overlap is real and should be handled explicitly. Adaption Labs owns broad Adaptive Data primitives such as dataset creation, run configuration, recipes like deduplication, evaluation, download, and export-style lifecycle operations. DataForge should position itself as a **computer-vision dataset repair cockpit powered by Adaption Labs**, not as a replacement for Adaption Labs. DataForge's value is the image-specific workflow: visual label review, missing-label completion, wrong-label correction, duplicate-image review/removal, class balancing, and an exportable image manifest with provenance.
+DataForge should be pitched as a **computer-vision dataset repair cockpit powered by Adaption Labs**, not as a replacement for Adaption Labs. Adaption Labs owns the broad dataset lifecycle and quality evaluation. DataForge owns the image-specific workflow: visual label review, missing-label completion, wrong-label correction, duplicate-image review/removal, class balancing, and exportable image-manifest provenance.
 
 ## 3. Comprehensive User Flow & Lifecycle
 
@@ -279,9 +254,37 @@ DataForge should use a lean, hackathon-friendly architecture with one web app, C
 - **LLM Analysis:** OpenAI GPT-5.5 using structured JSON output through the Responses API or equivalent available endpoint.
 - **Evaluation Platform:** Adaption Labs SDK/API for ingest, adapt, evaluate, and quality metrics.
 - **Synthetic Image Generation:** Fal as an optional stretch path for underrepresented classes after labelization and balancing decisions.
-- **Storage:** Vercel Blob, Cloudflare R2, Supabase Storage, or Convex file storage for uploaded datasets and generated images.
+- **Storage:** Convex file storage or local demo manifests for uploaded datasets and export artifacts. Do not use Vercel Blob for the MVP.
 - **Validation:** Zod for all provider outputs, request payloads, and structured report schemas.
 - **Deployment:** Vercel.
+
+### 4.1.1 Environment Variables
+
+Use `.env.local` for local secrets and `.env.example` as the committed template. Never put real provider secrets in `.env.example`.
+
+Required for local Convex:
+
+```env
+CONVEX_DEPLOYMENT=anonymous:anonymous-AIESG-May2026
+NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:3210
+NEXT_PUBLIC_CONVEX_SITE_URL=http://127.0.0.1:3211
+```
+
+Required for live provider calls:
+
+```env
+ADAPTION_API_KEY=
+ADAPTION_LABS_BASE_URL=https://api.adaptionlabs.ai
+OPENAI_API_KEY=
+```
+
+Optional stretch feature:
+
+```env
+FAL_KEY=
+```
+
+If provider keys are missing, DataForge should use deterministic fallback behavior so the demo remains reliable.
 
 ### 4.2 Application Surfaces
 
