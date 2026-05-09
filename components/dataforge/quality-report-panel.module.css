@@ -1,14 +1,14 @@
 .root {
-  --df-text: rgba(232, 236, 244, 0.92);
-  --df-text-dim: rgba(232, 236, 244, 0.55);
-  --df-card-bg: rgba(18, 22, 32, 0.65);
-  --df-card-border: rgba(255, 255, 255, 0.08);
-  --df-measured-accent: rgba(120, 220, 255, 0.85);
-  --df-inferred-accent: rgba(200, 160, 255, 0.85);
-  --df-good: rgba(120, 230, 170, 0.95);
-  --df-bad: rgba(240, 140, 160, 0.95);
-  --df-warn-bg: rgba(240, 180, 100, 0.12);
-  --df-warn-text: rgba(245, 200, 130, 0.95);
+  --df-text: var(--ink);
+  --df-text-dim: var(--muted);
+  --df-card-bg: var(--panel);
+  --df-card-border: var(--line);
+  --df-measured-accent: var(--cyan);
+  --df-inferred-accent: var(--violet);
+  --df-good: var(--mint);
+  --df-bad: var(--rose);
+  --df-warn-bg: oklch(94% 0.05 75);
+  --df-warn-text: var(--amber);
 
   display: flex;
   flex-direction: column;

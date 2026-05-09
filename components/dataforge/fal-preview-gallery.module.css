@@ -1,0 +1,170 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, oklch(88% 0.07 142 / 0.38), transparent 34%),
+    var(--panel);
+  box-shadow: 0 24px 70px var(--shadow);
+}
+
+.header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.header h3 {
+  margin: 3px 0 0;
+  font-size: 20px;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+
+.kicker,
+.countBadge,
+.metaGrid dt,
+.card figcaption span {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.kicker {
+  color: var(--acid);
+}
+
+.countBadge {
+  flex: 0 0 auto;
+  padding: 5px 7px;
+  border: 1px solid var(--acid);
+  color: var(--acid);
+}
+
+.copy {
+  max-width: 72ch;
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  background: var(--line);
+}
+
+.metaGrid div {
+  padding: 9px;
+  background: oklch(99% 0.006 91);
+}
+
+.metaGrid dt,
+.metaGrid dd {
+  margin: 0;
+}
+
+.metaGrid dd {
+  margin-top: 2px;
+  color: var(--ink);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.card {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid rgba(242, 240, 220, 0.14);
+  background: oklch(99% 0.006 91);
+}
+
+.imageWrap {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 3;
+  background: oklch(96% 0.012 91);
+}
+
+.image {
+  object-fit: cover;
+}
+
+.card figcaption {
+  display: grid;
+  gap: 3px;
+  padding: 7px;
+}
+
+.card figcaption span {
+  color: var(--acid);
+}
+
+.card figcaption strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card figcaption small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card[data-empty="true"] .imageWrap {
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(199, 255, 77, 0.2);
+}
+
+.card[data-empty="true"] figcaption span {
+  color: var(--muted);
+}
+
+.noImage {
+  max-width: 12ch;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.2;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.empty {
+  display: grid;
+  min-height: 132px;
+  place-items: center;
+  border: 1px dashed rgba(199, 255, 77, 0.24);
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 1180px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .grid,
+  .metaGrid {
+    grid-template-columns: 1fr;
+  }
+}

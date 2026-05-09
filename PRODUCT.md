@@ -8,7 +8,7 @@ product
 
 DataForge is a dataset repair cockpit for ML engineers preparing image classification datasets before model training. The product helps a user load a messy animal image dataset, inspect measured quality issues, approve label and duplicate decisions, balance underrepresented classes, re-evaluate the repaired manifest, and export a clean dataset manifest with provenance.
 
-The current UI is a hackathon MVP and demo-safe prototype. It prioritizes a clear, deterministic story over broad ingestion support: one seeded animal camera-trap dataset, a visible repair loop, before and after quality metrics, Convex-style live events, GPT-5.5 repair-plan copy, Adaption Labs-compatible manifest evaluation language, and Fal-style targeted synthetic additions.
+The current UI is a hackathon MVP and demo-safe prototype. It prioritizes a clear, deterministic story over broad ingestion support: one seeded Animals-10 dataset loaded from the unzipped `data/` directory via simulated ZIP drag/drop, a visible repair loop, before and after quality metrics, Convex-style live events, GPT-5.5 repair-plan copy, Adaption Labs-compatible manifest evaluation language, and Fal-style targeted synthetic additions.
 
 ## Core Users
 
@@ -35,13 +35,13 @@ The product should make one loop obvious:
 
 - Top navigation anchors the demo around Pipeline, Quality, Synthetics, and Explorer.
 - Hero controls collect a training intent and simulate a dataset ZIP upload.
-- The dataset preview uses pixel animal tiles for cats, dogs, birds, foxes, owls, and low-light wildlife.
-- Pipeline stages show upload, evaluate, analyze gaps, generate synthetic data, re-evaluate, and export.
+- The dataset preview uses pixel animal tiles and class chips for the Animals-10 source folders.
+- Pipeline stages show normalize, evaluate, labelize, deduplicate, balance, repair, re-evaluate, report, and export.
 - Live event logging shows Convex-style status messages and local fallback states.
 - Metric tiles show quality, balance, coverage, and synthetic sample counts.
 - Quality panels separate measured Adaption-style snapshots from GPT-5.5 inferred repair plans.
 - Distribution charts compare source and augmented class counts.
-- Synthetic job cards show targeted Fal-style prompts and per-class counts.
+- Synthetic job cards show targeted Fal-style prompts and per-class counts, capped so raw plus generated images total 100 per animal.
 - Explorer tables show sample ID, class, source, scenario, and status.
 - Feature modules exist for label audit, duplicate review, quality report, balancing, dataset explorer, and export manifest handoff.
 

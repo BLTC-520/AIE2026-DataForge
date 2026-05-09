@@ -106,7 +106,7 @@ Good uses:
 Project fit for DataForge:
 
 - Strong fit if used for manifest-level dataset lifecycle, evaluation, adaptation, or quality snapshots.
-- Do not claim Adaption Labs visually detects cats, dogs, duplicates, or mislabeled images unless the live API supports image-pixel analysis.
+- Do not claim Adaption Labs visually detects animal classes, duplicates, or mislabeled images unless the live API supports image-pixel analysis.
 
 ### Convex
 

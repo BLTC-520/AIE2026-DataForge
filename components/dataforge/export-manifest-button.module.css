@@ -1,11 +1,11 @@
 .root {
-  --df-text: rgba(232, 236, 244, 0.92);
-  --df-text-dim: rgba(232, 236, 244, 0.55);
-  --df-card-bg: rgba(18, 22, 32, 0.65);
-  --df-card-border: rgba(255, 255, 255, 0.08);
-  --df-accent: rgba(120, 220, 255, 0.85);
-  --df-good: rgba(120, 230, 170, 0.95);
-  --df-bad: rgba(240, 140, 160, 0.95);
+  --df-text: var(--ink);
+  --df-text-dim: var(--muted);
+  --df-card-bg: var(--panel);
+  --df-card-border: var(--line);
+  --df-accent: var(--cyan);
+  --df-good: var(--mint);
+  --df-bad: var(--rose);
 
   display: flex;
   flex-direction: column;
@@ -48,7 +48,7 @@
   margin: 0;
   padding: 0.85rem;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background: oklch(98% 0.01 91);
   border: 1px solid var(--df-card-border);
 }
 
@@ -75,7 +75,7 @@
 .btn {
   appearance: none;
   background: var(--df-accent);
-  color: #0b0e15;
+  color: oklch(17% 0.025 242);
   border: none;
   padding: 0.7rem 1.25rem;
   border-radius: 10px;
@@ -99,7 +99,7 @@
 
 .btn[data-status="exporting"] { background: rgba(120, 220, 255, 0.6); }
 .btn[data-status="done"]      { background: var(--df-good); }
-.btn[data-status="error"]     { background: var(--df-bad); color: #0b0e15; }
+.btn[data-status="error"]     { background: var(--df-bad); color: oklch(17% 0.025 242); }
 
 .error {
   margin: 0;

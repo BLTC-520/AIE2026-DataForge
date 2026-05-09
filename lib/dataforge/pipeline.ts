@@ -4,12 +4,14 @@ import type { PipelineEvent, PipelineStage, PipelineStageId, StageStatus } from 
 export const demoStageOrder = demoPipelineStages.map((stage) => stage.id);
 
 export const demoStageDelays: Record<PipelineStageId, number> = {
-  upload: 420,
+  normalize: 420,
   evaluate: 720,
   labelize: 560,
   deduplicate: 520,
   balance: 560,
+  repair: 420,
   reevaluate: 720,
+  report: 380,
   export: 380,
 };
 
@@ -76,5 +78,5 @@ export function getStageDelay(stageId: PipelineStageId) {
 }
 
 export function isTerminalStageStatus(status: StageStatus) {
-  return status === "complete" || status === "error";
+  return status === "complete" || status === "error" || status === "skipped" || status === "degraded";
 }

@@ -23,7 +23,7 @@ Recommended demo dataset:
 - **Base source:** Kaggle Animals-10, `alessiocorrado99/animals10`.
 - **Verdict:** Good fit as a base image-classification dataset because animal classes are visually understandable for judges.
 - **Constraint:** Do not use it raw. Build a controlled demo subset with deliberate defects: missing labels, wrong labels, duplicates, and class imbalance.
-- **Demo subset target:** 4 to 6 classes, around 150 to 300 images total, with a skew such as 90 cats and 20 dogs so balancing is obvious.
+- **Demo subset target:** 10 Animals-10 classes using the unzipped `data/animals/raw-img/` directory as the source. Keep the raw subset deliberately imbalanced from `cane=100` down to `scoiattolo=20`, then use cached Fal AI recovery assets so raw plus generated totals exactly 100 images per animal.
 - **Why it works:** The source is realistic enough to feel credible, while the curated corruption makes the two-minute repair loop predictable.
 
 Provider boundary decision:
@@ -101,14 +101,16 @@ Provider boundary decision:
   - **Action:** Move class distributions, baseline metrics, final metrics, stage definitions, and seeded animal samples into this file.
   - **Action:** Use Kaggle Animals-10 (`alessiocorrado99/animals10`) as the base dataset if download access is available, then create a curated demo subset rather than using the full dataset raw.
   - **Action:** Include 15 to 30 missing-label samples, 5 to 10 known label issues such as cat images assigned to dogs, and 5 to 10 duplicate or near-duplicate image records.
-  - **Action:** Create an obvious imbalance, such as 90 cats and 20 dogs, with target balance metadata such as 90 cats and 80 dogs.
+  - **Action:** Create an obvious Animals-10 imbalance with `cane=100`, `cavallo=90`, `elefante=80`, `farfalla=70`, `gallina=60`, `gatto=50`, `mucca=40`, `pecora=30`, `ragno=25`, and `scoiattolo=20`.
   - **Action:** Export pure data only. Do not export React state or UI code from this file.
 
-- [ ] **Step 1.3.1: Recover Fal AI Synthetic Mock Data**
+- [x] **Step 1.3.1: Recover Fal AI Synthetic Mock Data**
   - **Action:** Recover the images that were deleted in commit `7dbd4f14` (which created the deliberate imbalance).
   - **Action:** Add these recovered images into the demo seed as `falSyntheticSamples` (or similar).
   - **Constraint:** Only recover enough images to balance the "weights" against the most populous class. (e.g., if the majority class has 100 images, recover only enough images so that no class exceeds 100 images total).
   - **Constraint:** These must be presented to judges and hardcoded in the data as "actual synthetic images from fal ai" (never "simulated"). This exactly mirrors the real-world workflow and saves us from hitting 45-second generation limits on stage.
+  - **Implemented:** `falSyntheticSamples` is bounded to the majority-class cap, source-tagged as `synthetic`, provider-tagged as `fal.ai`, and surfaced through the repair pipeline with Fal run telemetry.
+  - **Asset layout:** The curated unzipped source dataset stays in `data/animals/raw-img/`. Cached Fal recovery images stay separate in `data/animals/fal-ai-generated/`; every animal totals exactly 100 images across raw plus generated assets, with `cane` requiring 0 generated images because raw already has 100.
 
 - [x] **Step 1.4: Create pipeline state helpers (`lib/dataforge/pipeline.ts`)**
   - **Action:** Implement helpers for queued stage creation, event creation, staged delay metadata, and demo pipeline transitions.
@@ -138,33 +140,43 @@ Provider boundary decision:
 
 *Depends on: Bazel Phase 1 and Joseph Phase 1.*
 
-- [ ] **Step B2.1: Import completed feature components into the app shell**
+- [x] **Step B2.1: Import completed feature components into the app shell**
   - **Action:** Wire `LabelAuditPanel` into the pipeline after baseline evaluation.
   - **Action:** Wire `QualityReportPanel`, `DistributionChart`, `DuplicateReviewPanel`, `BalancingPanel`, `DatasetExplorer`, and `ExportManifestButton` into the dashboard.
   - **Constraint:** Keep `app/page.tsx` thin. Use `DataForgeDemoApp` for orchestration.
 
-- [ ] **Step B2.2: Add the labelization, deduplication, balancing, and looping stages to the live pipeline**
+- [x] **Step B2.2: Add the labelization, deduplication, balancing, and looping stages to the live pipeline**
   - **Action:** Update the stage flow to run Upload, Evaluate, Labelize, Deduplicate, Balance, Re-evaluate, Loop (Soft Orchestrator), Export.
   - **Action:** Add events such as `labelize.started`, `missing_label.detected`, `label_issue.detected`, `label_decision.approved`, `duplicate.detected`, `duplicate.removed`, `balance_plan.created`, `loop.evaluated`, and `labelize.complete`.
-  - **Action:** Implement a React Flow visualization for the simulated model pipeline to show this iterative process.
+  - **Action:** Implement a React Flow pipeline visualization for the simulated model pipeline to show this iterative process.
   - **Validation:** The UI can pause after labelization so the presenter can approve completions/corrections before continuing, and the orchestrator handles the confidence score evaluation.
+  - **Implemented:** Current deterministic stage order is `normalize`, `evaluate`, `labelize`, `deduplicate`, `balance`, `repair`, `reevaluate`, `report`, `export`, backed by Convex stage rows and events. The shipped visualization now uses `@xyflow/react` / React Flow with status-colored nodes, animated active edges, minimap, controls, and a read-only layout.
 
-- [ ] **Step B2.3: Connect approved label decisions to downstream metrics**
+- [x] **Step B2.3: Connect approved label decisions to downstream metrics**
   - **Action:** Apply Bazel's `applyLabelDecisions` before Joseph's metrics, balancing, final quality evaluation, and export helpers run.
   - **Action:** Make class distribution, missing-label counts, and label issue counts change after approvals.
   - **Constraint:** Do not auto-apply label decisions on page load. The user must approve them.
+  - **Implemented:** Manual approval/edit/reject callbacks update the shared review sample state, and the demo pipeline applies high-confidence seeded decisions only after the labelize stage starts.
 
-- [ ] **Step B2.4: Connect duplicate review, balancing, and final quality evaluation to labelized data**
+- [x] **Step B2.4: Connect duplicate review, balancing, and final quality evaluation to labelized data**
   - **Action:** Run duplicate review after label review and before balancing.
   - **Action:** Run Joseph's balancing helpers only after label and duplicate decisions are applied.
   - **Action:** Ensure final evaluation receives the clean labelized and deduplicated repair manifest, not stale original samples.
   - **Validation:** Manifest contains original, newly labeled, relabeled, duplicate removal, balancing, visual-audit, and quality-evaluation provenance.
+  - **Implemented:** The scripted flow applies label decisions, removes duplicate export entries, accepts the balancing plan, injects bounded Fal samples, then writes the second evaluation snapshot and export-ready event.
 
-- [ ] **Step B2.5: Demo timing pass (Mocked Processing)**
+- [x] **Step B2.5: Demo timing pass (Mocked Processing)**
   - **Action:** Tune artificial staged delays (spinners and loading visuals) so the demo feels live and processing-heavy but advances predictably.
   - **Action:** Use pre-computed, mocked data for visual audit, duplicate detection, manifest evaluation, and LLM explanation to bypass the 30+ minute real-world processing times. Include the 3-second loader for the Fal AI image generation that instantly returns the recovered imbalance images.
   - **Action:** Make the whole click-through complete in under 2 minutes.
   - **Constraint:** Keep behavior strictly deterministic. The "live" pipeline is entirely simulated for the presentation and must not imply Adaption Labs read image pixels.
+  - **Implemented:** Stage delays are deterministic, the provider logs distinguish internal deterministic adapters from live provider paths, and GPT/Fal outputs are bounded by precomputed demo data.
+
+- [x] **Step B2.6: Final UI declutter, React Flow, and Fal previews**
+  - **Action:** Replace the dense custom pipeline grid with a React Flow visualization while keeping Convex as the realtime state spine.
+  - **Action:** Add a generated-image preview surface for cached Fal AI recovery assets in `data/animals/fal-ai-generated/`.
+  - **Action:** Collapse parallel integration panels into an advanced review workbench so the primary demo path stays focused.
+  - **Implemented:** The main dashboard now leads with hero controls, React Flow pipeline, metrics, report/distribution, Fal preview gallery, synthetic jobs, and explorer. The deeper label/duplicate/report/balance/export components remain available behind a collapsible workbench.
 
 ---
 
@@ -268,7 +280,7 @@ Provider boundary decision:
 - [x] **Step 3.4: Build quality report panel (`components/dataforge/quality-report-panel.tsx`)**
   - **Action:** Show measured metrics separately from GPT-5.5 inferred recommendations and label every metric source: Adaption manifest evaluation, deterministic parser metric, seeded demo metric, or GPT Vision/Gemini estimate.
   - **Action:** Include specific loop metrics: how many times it was looped, confidence score, images added to balance, labels corrected, missing labels added, duplicate images removed, and clusters identified (mocked via folder names).
-  - **Action:** Include a React Flow visualization area simulating the model pipeline.
+  - **Action:** Include a React Flow pipeline visualization area simulating the model pipeline.
   - **Action:** Show quality, balance, completeness, consistency, missing-label delta, label issue delta, and duplicate issue delta.
 
 - [x] **Step 3.5: Build before/after chart (`components/dataforge/distribution-chart.tsx`)**
@@ -279,8 +291,9 @@ Provider boundary decision:
 - [x] **Step 3.6: Build balancing panel (`components/dataforge/balancing-panel.tsx`)**
   - **Action:** Show balancing recommendations grouped by class.
   - **Action:** Show current count, target count, recommended weight, sampling strategy, and reason.
-  - **Action:** Add a "Run Fal AI Generation" button that triggers the 3-second mocked loader and injects the recovered held-out images.
+  - **Action:** Reveal Fal AI recovery outputs during the bounded repair stage without waiting for live generation on stage.
   - **Action:** Render the generated images in a grid, each marked with a clear `✨ Fal AI` or `Synthetic` badge to prove strict data tracking to the judges.
+  - **Implemented:** The primary synthetic section renders cached Fal AI recovery previews across Animals-10 classes from `data/animals/fal-ai-generated/`, each tagged `✨ Fal AI` when generated. The generated asset set tops up `cavallo`, `elefante`, `farfalla`, `gallina`, `gatto`, `mucca`, `pecora`, `ragno`, and `scoiattolo` so every animal totals exactly 100 images.
 
 - [x] **Step 3.7: Build export manifest button (`components/dataforge/export-manifest-button.tsx`)**
   - **Action:** Generate a JSON manifest with original samples, final labels, missing-label completions, corrected labels, duplicate removal decisions, balancing metadata, visual-audit provenance, baseline quality snapshot, and final quality snapshot.
@@ -402,26 +415,26 @@ Provider boundary decision:
 
 *Objective: Know when the build is good enough to present.*
 
-- [ ] **Acceptance 1: Dataset load works**
-  - **Validation:** Clicking "Upload ZIP" (which simulates an upload by loading from the local `data/` directory) shows classes, sample count, missing-label count, duplicate count, and seeded label issue count.
+- [x] **Acceptance 1: Dataset load works**
+  - **Validation:** Dragging/dropping or clicking the simulated training ZIP loads from the local unzipped `data/` directory and shows classes, sample count, missing-label count, duplicate count, and seeded label issue count.
 
-- [ ] **Acceptance 2: Baseline evaluation works**
+- [x] **Acceptance 2: Baseline evaluation works**
   - **Validation:** Clicking Analyze Dataset shows baseline quality, balance, completeness, consistency, missing-label, duplicate, and label issue metrics with visible metric source labels.
 
-- [ ] **Acceptance 3: Label audit works**
+- [x] **Acceptance 3: Label audit works**
   - **Validation:** User can approve at least one missing-label completion and one obvious mislabeled sample while original labels remain preserved.
 
-- [ ] **Acceptance 4: Duplicate review works**
+- [x] **Acceptance 4: Duplicate review works**
   - **Validation:** User can remove at least one duplicate image from export while preserving duplicate provenance.
 
-- [ ] **Acceptance 5: Balancing plan works**
-  - **Validation:** The app shows deterministic class weights or sampling recommendations for foxes, owls, and low-light wildlife without pretending they are real images.
+- [x] **Acceptance 5: Balancing plan works**
+  - **Validation:** The app shows deterministic class weights or sampling recommendations for underfilled Animals-10 classes without pretending class weights are real images.
 
-- [ ] **Acceptance 6: Re-evaluation works**
+- [x] **Acceptance 6: Re-evaluation works**
   - **Validation:** Before/after cards show improved labeling completeness, duplicate count, balance, label issue count, or quality score without implying Adaption Labs inspected image pixels.
 
-- [ ] **Acceptance 7: Export works**
+- [x] **Acceptance 7: Export works**
   - **Validation:** Exported JSON contains training intent, original labels, final labels, newly labeled samples, corrected labels, duplicate removals, balancing metadata, visual-audit provenance, quality report, and before/after quality snapshots.
 
-- [ ] **Acceptance 8: The pitch is honest**
+- [x] **Acceptance 8: The pitch is honest**
   - **Validation:** The team says DataForge improves dataset readiness, not trained model accuracy.

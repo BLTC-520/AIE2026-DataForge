@@ -10,6 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@xyflow/react": "^12.10.2",
     "convex": "^1.38.0",
     "next": "latest",
     "openai": "^6.37.0",

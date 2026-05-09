@@ -26,18 +26,22 @@ Current global tokens in `styles.css`:
 - `--acid`: `#c7ff4d`, primary action and main success accent.
 - `--mint`: `#54f0b4`, complete and success states.
 - `--cyan`: `#52d6ff`, focus, secondary action, measured data.
-- `--amber`: `#ffbc42`, running state, warnings, cats.
-- `--rose`: `#ff5d7d`, error and fox accents.
-- `--violet`: `#af8cff`, inferred analysis and owl accents.
+- `--amber`: `#ffbc42`, running state, warnings, and cavallo accents.
+- `--rose`: `#ff5d7d`, error and farfalla accents.
+- `--violet`: `#af8cff`, inferred analysis and gatto accents.
 
 Class accents currently map to animal categories:
 
-- Cats: amber.
-- Dogs: mint.
-- Birds: cyan.
-- Foxes: rose.
-- Owls: violet.
-- Low-light wildlife: warm ink.
+- cane: mint.
+- cavallo: amber.
+- elefante: cyan.
+- farfalla: rose.
+- gallina: warm ink.
+- gatto: violet.
+- mucca: green.
+- pecora: cream.
+- ragno: pink.
+- scoiattolo: brown.
 
 Design guidance:
 

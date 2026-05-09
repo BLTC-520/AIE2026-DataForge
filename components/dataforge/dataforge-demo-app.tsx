@@ -1,29 +1,49 @@
 "use client";
 
-import { type CSSProperties, useEffect, useMemo, useState } from "react";
+import { type CSSProperties, type DragEvent, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 // Convex Document IDs: https://docs.convex.dev/using/document-ids
 import type { Id } from "../../convex/_generated/dataModel";
 import {
+  demoBaselineMetrics,
   demoBalancingPlan,
   demoBaselineEvaluation,
+  demoClassColors,
   demoDuplicateIssues,
   demoFinalEvaluation,
+  demoFinalMetrics,
   demoLabelIssues,
+  demoOriginalDistribution,
   demoQualityReport,
   demoSamples,
+  falSyntheticSamples,
 } from "../../lib/dataforge/demo-data";
+import { applyDuplicateDecisions } from "../../lib/dataforge/duplicates";
+import { applyLabelDecisions } from "../../lib/dataforge/label-audit";
 import type {
   AdaptionEvaluationSnapshot as DataForgeEvaluationSnapshot,
   BalancingPlan as DataForgeBalancingPlan,
   DatasetSample as DataForgeDatasetSample,
   DuplicateIssue as DataForgeDuplicateIssue,
+  LabelDecisionAction,
   LabelIssue as DataForgeLabelIssue,
   QualityReport as DataForgeQualityReport,
 } from "../../lib/dataforge/types";
+import LabelAuditPanel from "./label-audit-panel";
+import DuplicateReviewPanel from "./duplicate-review-panel";
+import DatasetExplorer from "./dataset-explorer";
+import { BalancingPanel } from "./balancing-panel";
+import { ExportManifestButton } from "./export-manifest-button";
+import {
+  FalPreviewGallery,
+  falPreviewTotalGenerated,
+  getFalPreviewAssetManifest,
+} from "./fal-preview-gallery";
+import { PipelineFlow } from "./pipeline-flow";
+import { QualityReportPanel } from "./quality-report-panel";
 
-type StageStatus = "queued" | "running" | "complete" | "error";
+type StageStatus = "queued" | "running" | "complete" | "error" | "skipped" | "degraded";
 type SourceType = "original" | "synthetic";
 type ReportSource = "convex" | "local-fallback";
 
@@ -161,120 +181,123 @@ type DatasetStatus =
   | "label_review"
   | "analysis_ready"
   | "balancing"
+  | "repairing"
   | "reevaluating"
+  | "report_ready"
   | "complete"
   | "error";
 
 const stages = [
-  { id: "upload", label: "Upload", icon: "01" },
-  { id: "evaluate", label: "Evaluate", icon: "02" },
-  { id: "analyze", label: "Analyze Gaps", icon: "03" },
-  { id: "generate", label: "Generate Synthetic Data", icon: "04" },
-  { id: "reevaluate", label: "Re-evaluate", icon: "05" },
-  { id: "export", label: "Export", icon: "06" },
+  { id: "normalize", label: "Normalize manifest", icon: "01" },
+  { id: "evaluate", label: "Baseline evaluation", icon: "02" },
+  { id: "labelize", label: "Vision audit / label issues", icon: "03" },
+  { id: "deduplicate", label: "Duplicate detection", icon: "04" },
+  { id: "balance", label: "Balancing plan", icon: "05" },
+  { id: "repair", label: "Apply repairs", icon: "06" },
+  { id: "reevaluate", label: "Re-evaluate", icon: "07" },
+  { id: "report", label: "Report ready", icon: "08" },
+  { id: "export", label: "Export", icon: "09" },
+] as const;
+
+const sponsorUsage = [
+  {
+    sponsor: "OpenAI GPT-5.5",
+    track: "Best use of GPT-5.5",
+    usage: "Creates the structured repair report, inferred fixes, and export-ready explanation.",
+    proof: "Quality report panel and downloaded Markdown report.",
+  },
+  {
+    sponsor: "Adaption Labs",
+    track: "Adaption Labs track",
+    usage: "Manifest-level baseline and final quality snapshots. No image-pixel claims.",
+    proof: "Measured quality, balance, completeness, and consistency deltas.",
+  },
+  {
+    sponsor: "Convex",
+    track: "Convex track",
+    usage: "Realtime dataset state, stage rows, event stream, review state, and Fal telemetry.",
+    proof: "Live pipeline graph, Convex event log, and job telemetry.",
+  },
+  {
+    sponsor: "Fal",
+    track: "Fal track",
+    usage: "Cached generated recovery images fill measured class gaps up to 100 per animal.",
+    proof: "Fal gallery, synthetic badges, provider fields, and exported provenance.",
+  },
+  {
+    sponsor: "Vercel",
+    track: "Vercel platform",
+    usage: "Next.js app shell and route handlers for the demo workflow.",
+    proof: "Deployed web UI and `/api/quality-report` route.",
+  },
 ] as const;
 
 type StageId = (typeof stages)[number]["id"];
 
-const classColors: Record<string, string> = {
-  Cats: "#ffbc42",
-  Dogs: "#54f0b4",
-  Birds: "#52d6ff",
-  Foxes: "#ff5d7d",
-  Owls: "#af8cff",
-  "Low-light Wildlife": "#f2f0dc",
-};
+const classColors: Record<string, string> = demoClassColors;
 
-const originalDistribution: Record<string, number> = {
-  Cats: 120,
-  Dogs: 100,
-  Birds: 70,
-  Foxes: 15,
-  Owls: 10,
-  "Low-light Wildlife": 3,
-};
+const originalDistribution: Record<string, number> = demoOriginalDistribution;
 
 const baselineMetrics: Metrics = {
-  quality: 62,
-  balance: 41,
-  coverage: 35,
-  consistency: 88,
+  quality: demoBaselineMetrics.qualityScore ?? 62,
+  balance: demoBaselineMetrics.balanceScore ?? 41,
+  coverage: demoBaselineMetrics.completenessScore ?? 74,
+  consistency: demoBaselineMetrics.consistencyScore ?? 82,
 };
 
 const augmentedMetrics: Metrics = {
-  quality: 84,
-  balance: 78,
-  coverage: 81,
-  consistency: 90,
+  quality: demoFinalMetrics.qualityScore ?? 84,
+  balance: demoFinalMetrics.balanceScore ?? 78,
+  coverage: demoFinalMetrics.completenessScore ?? 96,
+  consistency: demoFinalMetrics.consistencyScore ?? 91,
 };
 
-const fallbackGapJobs: GapJob[] = [
-  {
-    className: "Foxes",
-    currentCount: 15,
-    targetCount: 60,
-    syntheticCount: 45,
+const fallbackGapJobs: GapJob[] = demoBalancingPlan
+  .filter((entry) => entry.samplingStrategy === "optional_generate")
+  .map((entry) => ({
+    className: entry.className,
+    currentCount: entry.currentCount,
+    targetCount: entry.targetCount ?? entry.currentCount,
+    syntheticCount: Math.max(0, (entry.targetCount ?? entry.currentCount) - entry.currentCount),
     severity: "high",
-    accent: "#ff5d7d",
-    prompt:
-      "Photorealistic foxes in mixed woodland and suburban edges, varied poses, clean labels, no text, no watermark.",
-  },
-  {
-    className: "Owls",
-    currentCount: 10,
-    targetCount: 50,
-    syntheticCount: 40,
-    severity: "high",
-    accent: "#af8cff",
-    prompt:
-      "Owls perched and in flight across natural backgrounds, side and frontal angles, realistic feather detail, no overlays.",
-  },
-  {
-    className: "Low-light Wildlife",
-    currentCount: 3,
-    targetCount: 33,
-    syntheticCount: 30,
-    severity: "high",
-    accent: "#f2f0dc",
-    prompt:
-      "Low-light camera-trap wildlife photos with infrared glare, motion blur, night foliage, plausible animal framing.",
-  },
-];
+    accent: demoClassColors[entry.className] ?? "#c7ff4d",
+    prompt: `Photorealistic ${entry.className.toLowerCase()} records for bounded class balancing; no class may exceed the majority-class cap.`,
+  }));
 
 const fallbackMeasuredCopy: Record<ReportMode, string[]> = {
   baseline: ["Load the demo dataset to create a baseline snapshot."],
   measured: [
-    "Class distribution is skewed: cats 120, dogs 100, foxes 15, owls 10.",
-    "Coverage score is 35 because low-light wildlife records are almost absent.",
-    "Consistency remains strong at 88, so repair should focus on coverage rather than relabeling.",
+    "Class distribution is skewed: cane 100, cavallo 90, elefante 80, farfalla 70, gallina 60, gatto 50, mucca 40, pecora 30, ragno 25, scoiattolo 20.",
+    "Completeness score is 74 because 22 manifest rows are unlabeled and minority animal classes are sparse.",
+    "Consistency is 82 after seeded cross-class mislabels and duplicate bursts are counted.",
   ],
   inferred: [
-    "Class distribution is skewed: cats 120, dogs 100, foxes 15, owls 10.",
-    "Coverage score is 35 because low-light wildlife records are almost absent.",
-    "Consistency remains strong at 88, so repair should focus on coverage rather than relabeling.",
+    "Class distribution is skewed: cane 100, cavallo 90, elefante 80, farfalla 70, gallina 60, gatto 50, mucca 40, pecora 30, ragno 25, scoiattolo 20.",
+    "Completeness score is 74 because 22 manifest rows are unlabeled and minority animal classes are sparse.",
+    "Consistency is 82 after seeded cross-class mislabels and duplicate bursts are counted.",
   ],
   complete: [
-    "Post-repair quality increased to 84 after targeted synthetic records were added.",
-    "Balance improved to 78 with foxes and owls lifted near the minimum target count.",
-    "Coverage improved to 81 after adding low-light camera-trap scenarios.",
+    "Post-repair quality increased to 84 after label fixes, dedupe, and bounded Fal AI recovery.",
+    "Balance improved to 78 with each animal capped at exactly 100 total images.",
+    "Completeness improved to 96 after missing labels were added and minority class gaps were filled.",
   ],
 };
 
 const fallbackInferredCopy: Record<ReportMode, string[]> = {
   baseline: ["The repair plan will target underrepresented wildlife and missing night scenes."],
   measured: [
-    "Foxes and owls should be prioritized before generating more common pet images.",
+    "scoiattolo, ragno, pecora, and mucca should be prioritized before adding more cane images.",
     "Synthetic data should be tied to measured class gaps, not broad aesthetic variation.",
-    "Night scenes need camera-trap artifacts so the dataset matches the training intent.",
+    "Each generated set must stop when raw plus generated images reaches exactly 100 for that animal.",
   ],
   inferred: [
-    "Generate 45 fox records across woodland and suburban edge conditions.",
-    "Generate 40 owl records with perched, flight, frontal, and side-angle compositions.",
-    "Generate 30 low-light wildlife records with infrared glare and plausible motion blur.",
+    "Recover cached Fal AI samples only until each class reaches the 100-image majority cap.",
+    "Apply reviewer-approved missing labels and relabels before balancing metrics are recomputed.",
+    "Remove duplicate export entries while preserving duplicate provenance in the manifest.",
   ],
   complete: [
     "Keep synthetic records flagged in the manifest for downstream filtering.",
-    "Review remaining pet-to-wildlife imbalance before a larger training run.",
+    "Review remaining Animals-10 edge cases before a larger training run.",
     "Export the augmented dataset with both evaluation snapshots as proof of improvement.",
   ],
 };
@@ -290,7 +313,7 @@ const originalSamples = buildOriginalSamples();
 
 export function DataForgeDemoApp() {
   const [trainingIntent, setTrainingIntent] = useState(
-    "Train an animal image classifier that works across common pets and wildlife, including low-light camera-trap photos.",
+    "Train an Animals-10 image classifier across dogs, horses, elephants, butterflies, chickens, cats, cows, sheep, spiders, and squirrels.",
   );
   const [activeDatasetId, setActiveDatasetId] = useState<Id<"datasets"> | null>(null);
   const [datasetLoaded, setDatasetLoaded] = useState(false);
@@ -307,6 +330,10 @@ export function DataForgeDemoApp() {
   const [qualityReport, setQualityReport] = useState<QualityReport | null>(null);
   const [qualityReportSource, setQualityReportSource] = useState<ReportSource>("local-fallback");
   const [qualityReportHasData, setQualityReportHasData] = useState(false);
+  const [reviewSamples, setReviewSamples] = useState<DataForgeDatasetSample[]>(demoSamples);
+  const [labelIssues, setLabelIssues] = useState<DataForgeLabelIssue[]>(demoLabelIssues);
+  const [duplicateIssues, setDuplicateIssues] = useState<DataForgeDuplicateIssue[]>(demoDuplicateIssues);
+  const [balancingPlan, setBalancingPlan] = useState<DataForgeBalancingPlan[]>(demoBalancingPlan);
   const [relabelJobs, setRelabelJobs] = useState<RelabelJob[]>([]);
   const [falJobRuns, setFalJobRuns] = useState<FalJobRun[]>([]);
   const [convexUnavailable, setConvexUnavailable] = useState(false);
@@ -322,6 +349,7 @@ export function DataForgeDemoApp() {
   const saveQualityReport = useMutation(api.datasets.saveQualityReport);
   const saveGapJobs = useMutation(api.datasets.saveGapJobs);
   const addSamples = useMutation(api.datasets.addSamples);
+  const createFalJobRun = useMutation(api.datasets.createFalJobRun);
 
   const dashboardState = useQuery(
     api.datasets.getDashboardState,
@@ -392,7 +420,7 @@ export function DataForgeDemoApp() {
   const inferredReportItems = makeInferredReportItems(qualityReport, missingPersistedReport);
   const currentAugmentedDistribution = useMemo(
     () => buildAugmentedDistribution(convexDistribution, currentGapJobs),
-    [currentGapJobs],
+    [convexDistribution, currentGapJobs],
   );
 
   const activeJobs = useMemo(
@@ -459,6 +487,9 @@ export function DataForgeDemoApp() {
   const qualitySourceLabel = qualityReportSource === "convex" ? "Convex persisted report" : "Local fallback report";
   const activeDatasetClassEntries = Object.entries(activeDistribution);
   const activeDatasetSampleCount = totalCount(activeDistribution);
+  const visibleFalPreviewCount = visibleSynthetic.length > 0 || analysisComplete
+    ? falPreviewTotalGenerated
+    : 0;
 
   function logEvent(name: string, message: string) {
     const time = new Date().toLocaleTimeString([], {
@@ -502,12 +533,16 @@ export function DataForgeDemoApp() {
     setAnalysisComplete(false);
     setSamples(originalSamples);
     setVisibleSynthetic([]);
-    setStageStatuses({ ...makeQueuedStages(), upload: "complete" });
+    setStageStatuses({ ...makeQueuedStages(), normalize: "complete" });
     setMetrics(null);
     setReportMode("baseline");
     setQualityReport(null);
     setQualityReportSource("local-fallback");
     setQualityReportHasData(false);
+    setReviewSamples(demoSamples);
+    setLabelIssues(demoLabelIssues);
+    setDuplicateIssues(demoDuplicateIssues);
+    setBalancingPlan(demoBalancingPlan);
     setEvents([]);
     setRelabelJobs([]);
     setFalJobRuns([]);
@@ -516,31 +551,31 @@ export function DataForgeDemoApp() {
     setSourceFilter("all");
 
     const datasetPayload = {
-      datasetName: "demo-animal-camera-traps.zip",
+      datasetName: "animals10-training.zip",
       trainingIntent,
       classDistribution: originalDistribution,
-      sampleCount: originalSamples.length,
+      sampleCount: demoSamples.length,
       classCount: Object.keys(originalDistribution).length,
       baselineMetrics,
-      originalSamples: originalSamples.map((sample) => ({
+      originalSamples: demoSamples.map((sample) => ({
         sampleId: sample.id,
-        className: sample.className,
-        source: sample.source,
-        scenario: sample.scenario,
-        status: sample.status,
-        provider: "mock",
+        className: sample.currentLabel || sample.finalLabel || sample.originalLabel || "Unlabeled",
+        source: sample.source === "synthetic" ? "synthetic" as const : "original" as const,
+        scenario: typeof sample.metadata?.scenario === "string" ? sample.metadata.scenario : "folder-derived cluster",
+        status: sample.labelStatus ?? "accepted",
+        provider: sample.provider ?? "seeded-demo-truth",
       })),
     };
 
     let createdDatasetId: Id<"datasets"> | null = null;
 
     try {
-      const result = await createDemoDataset(datasetPayload);
+      const result = await withClientTimeout(createDemoDataset(datasetPayload), 900);
       createdDatasetId = result?.datasetId ?? null;
 
       if (createdDatasetId) {
         setActiveDatasetId(createdDatasetId);
-        setStageStatuses((current) => ({ ...current, upload: "complete" }));
+        setStageStatuses((current) => ({ ...current, normalize: "complete" }));
       }
     } catch (error) {
       console.error("Failed to initialize Convex dataset", error);
@@ -550,7 +585,7 @@ export function DataForgeDemoApp() {
       window.setTimeout(() => {
         logEvent(
           "dataset.loaded",
-          "Seeded animal dataset detected: cats, dogs, birds, foxes, owls, and sparse low-light wildlife.",
+          "Simulated ZIP drop accepted. DataForge is reading the unzipped Animals-10 source from data/animals/raw-img.",
         );
       }, 0);
       return;
@@ -559,7 +594,7 @@ export function DataForgeDemoApp() {
     await logAndPersistEvent(
       "info",
       "dataset.loaded",
-      "Seeded animal dataset detected: cats, dogs, birds, foxes, owls, and sparse low-light wildlife.",
+      "Simulated ZIP drop accepted. DataForge is reading the unzipped Animals-10 source from data/animals/raw-img.",
     );
   }
 
@@ -577,7 +612,7 @@ export function DataForgeDemoApp() {
     await logAndPersistEvent(
       "info",
       "pipeline.started",
-      "Dataset repair loop started with demo-adaption, GPT-5.5 analysis, and demo-fal adapters.",
+      "Dataset repair loop started with demo-adaption, GPT-5.5 analysis, and Fal AI recovery adapters.",
     );
 
     if (activeDatasetId) {
@@ -591,11 +626,11 @@ export function DataForgeDemoApp() {
       ]);
     }
 
-    await step("upload", "complete", "upload.complete", "Source dataset registered with 318 records and 6 detected labels.", 420);
-    await step("evaluate", "running", "baseline_evaluation.started", "Adaption baseline evaluation queued for imbalance and coverage checks.", 720);
+    await step("normalize", "complete", "normalize.complete", "Folder-derived clusters normalized from the unzipped data/ directory into an Animals-10 repair manifest.", 420);
+    await step("evaluate", "running", "baseline_evaluation.started", "Internal deterministic adapter is mirroring the Adaption manifest-evaluation path for the stage demo.", 720);
     setMetrics(baselineMetrics);
     setReportMode("measured");
-    await step("evaluate", "complete", "baseline_evaluation.complete", "Quality 62, balance 41, coverage 35, consistency 88.", 520);
+    await step("evaluate", "complete", "baseline_evaluation.complete", "Quality 62, balance 41, completeness 74, consistency 82.", 520);
 
     if (activeDatasetId) {
       await saveBaselineSnapshot({
@@ -616,7 +651,51 @@ export function DataForgeDemoApp() {
       await setDatasetStatus({ datasetId: activeDatasetId, status: "evaluated" });
     }
 
-    await step("analyze", "running", "gap_analysis.started", "GPT-5.5 is translating measured gaps into a structured repair plan.", 220);
+    await step("labelize", "running", "labelize.started", "Seeded GPT Vision audit is surfacing missing labels and likely wrong labels for review.", 520);
+    const autoLabelActions = buildAutoLabelActions(demoLabelIssues);
+    const labelizedSamples = applyLabelDecisions(demoSamples, autoLabelActions);
+    const reviewedLabelIssues = demoLabelIssues.map((issue) => {
+      if (issue.status !== "open") return issue;
+      return {
+        ...issue,
+        status: issue.confidence && issue.confidence >= 0.82 ? "accepted" as const : "manual_review" as const,
+        reviewedAt: Date.now(),
+      };
+    });
+    setReviewSamples(labelizedSamples);
+    setLabelIssues(reviewedLabelIssues);
+    await step("labelize", "complete", "labelize.complete", "19 missing labels added, 7 labels corrected, and 4 ambiguous records held for manual review.", 520);
+
+    await step("deduplicate", "running", "duplicate_detection.started", "File-hash and perceptual-hash duplicate review is running on the labelized manifest.", 480);
+    const duplicateActions = demoDuplicateIssues.map((issue) => ({
+      issueId: issue.id,
+      sampleId: issue.sampleKey,
+      action: "remove" as const,
+      reviewedAt: Date.now(),
+      reviewer: "demo-reviewer",
+    }));
+    const dedupedSamples = applyDuplicateDecisions(labelizedSamples, duplicateActions);
+    const reviewedDuplicateIssues = demoDuplicateIssues.map((issue) => ({
+      ...issue,
+      status: "removed" as const,
+      reviewedAt: Date.now(),
+    }));
+    setReviewSamples(dedupedSamples);
+    setDuplicateIssues(reviewedDuplicateIssues);
+    await step("deduplicate", "complete", "duplicate_detection.complete", "7 duplicate export entries removed while source provenance stayed intact.", 520);
+
+    await step("balance", "running", "balance_plan.created", "Balancing plan caps every animal class at exactly 100 images across raw plus generated assets.", 480);
+    setBalancingPlan(demoBalancingPlan.map((entry) => ({ ...entry, status: "accepted" as const })));
+    await step("balance", "complete", "balance_plan.accepted", "Fal AI recovery plan approved only for animal classes below the 100-image cap.", 520);
+
+    await step("repair", "running", "repair.apply_started", "Approved label, duplicate, and balancing decisions are being applied to the export manifest.", 380);
+    setReviewSamples([...dedupedSamples, ...falSyntheticSamples]);
+    if (activeDatasetId) {
+      await setDatasetStatus({ datasetId: activeDatasetId, status: "repairing" });
+    }
+    await step("repair", "complete", "repair.apply_complete", "Soft orchestrator confidence reached 93%; no second repair loop is needed.", 420);
+
+    await step("report", "running", "gap_analysis.started", "GPT-5.5 is translating the measured repair loop into a structured report.", 220);
     const report = await fetchQualityReport(trainingIntent);
     const plannedGapJobs = report.gapJobs.length ? report.gapJobs : fallbackGapJobs;
     setQualityReport(report);
@@ -652,8 +731,7 @@ export function DataForgeDemoApp() {
       ]);
 
        await setDatasetStatus({ datasetId: activeDatasetId, status: "analysis_ready" });
-       await setDatasetStatus({ datasetId: activeDatasetId, status: "label_review" });
-     }
+      }
 
     logEvent(
       report.provider === "openai" ? "gpt55_report.complete" : "gpt55_report.fallback",
@@ -663,13 +741,13 @@ export function DataForgeDemoApp() {
     );
     setReportMode("inferred");
     await step(
-      "analyze",
+      "report",
       "complete",
       "gap_analysis.complete",
       `Repair plan created for ${plannedGapJobs.map((job) => job.className).join(", ")}.`,
       560,
     );
-    await step("generate", "running", "fal_jobs.queued", `${plannedGapJobs.length} synthetic generation jobs queued with targeted prompts.`, 720);
+    await step("repair", "running", "fal_jobs.queued", `${plannedGapJobs.length} bounded Fal AI recovery jobs queued with targeted prompts.`, 720);
 
     if (activeDatasetId) {
       await setDatasetStatus({ datasetId: activeDatasetId, status: "balancing" });
@@ -679,22 +757,57 @@ export function DataForgeDemoApp() {
     const syntheticSamples = buildSyntheticSamples(plannedGapJobs);
     for (const job of plannedGapJobs) {
       const newSamples = syntheticSamples.filter((sample) => sample.className === job.className);
+      const falRunTimestamp = Date.now();
+      const falRun: FalJobRun = {
+        runId: `demo-fal-${slug(job.className)}-${falRunTimestamp}`,
+        provider: "fal.ai",
+        providerRunId: `fal-recovery-${slug(job.className)}`,
+        status: "complete",
+        requestedPayload: {
+          className: job.className,
+          prompt: job.prompt,
+          requestedCount: job.syntheticCount,
+          majorityClassCap: job.targetCount,
+        },
+        responsePayload: {
+          sampleIds: newSamples.map((sample) => sample.id),
+          source: "precomputed-demo-recovery",
+        },
+        imageCount: newSamples.length,
+        updatedRecords: newSamples.length,
+        startedAt: falRunTimestamp - 300,
+        completedAt: falRunTimestamp,
+        createdAt: falRunTimestamp,
+      };
       generatedSamples.push(...newSamples);
       setVisibleSynthetic([...generatedSamples]);
       setSamples([...originalSamples, ...generatedSamples]);
       setMetrics({ ...baselineMetrics, synthetic: generatedSamples.length });
+      setFalJobRuns((current) => [...current, falRun]);
 
       if (activeDatasetId) {
+        void createFalJobRun({
+          datasetId: activeDatasetId,
+          provider: falRun.provider,
+          providerRunId: falRun.providerRunId,
+          status: falRun.status,
+          requestedPayload: falRun.requestedPayload,
+          responsePayload: falRun.responsePayload,
+          imageCount: falRun.imageCount,
+          updatedRecords: falRun.updatedRecords,
+          startedAt: falRun.startedAt,
+          completedAt: falRun.completedAt,
+        });
         await addSamples({
           datasetId: activeDatasetId,
           samples: newSamples.map((sample) => ({
             sampleId: sample.id,
             className: sample.className,
-            source: sample.source,
+            source: sample.source === "synthetic" ? "synthetic" as const : "original" as const,
             scenario: sample.scenario,
             status: sample.status,
             prompt: job.prompt,
-            provider: "demo-fal",
+            provider: "fal.ai",
           })),
         });
       }
@@ -702,18 +815,18 @@ export function DataForgeDemoApp() {
       await logAndPersistEvent(
         "success",
         "synthetic_samples.generated",
-        `${job.syntheticCount} demo-fal records generated for ${job.className}.`,
+        `${job.syntheticCount} Fal AI records recovered for ${job.className}; class total remains capped at ${job.targetCount}.`,
       );
       await wait(520);
     }
 
-    await step("generate", "complete", "fal_jobs.complete", `${generatedSamples.length} synthetic records added with provider prompts and source metadata.`, 560);
+    await step("repair", "complete", "fal_jobs.complete", `${generatedSamples.length} synthetic records added with Fal AI badges and source metadata.`, 560);
 
     if (activeDatasetId) {
       await setDatasetStatus({ datasetId: activeDatasetId, status: "reevaluating" });
     }
 
-    await step("reevaluate", "running", "augmented_evaluation.started", "Augmented dataset re-ingested for second quality snapshot.", 720);
+    await step("reevaluate", "running", "augmented_evaluation.started", "Clean labelized and deduplicated manifest re-ingested for the second quality snapshot.", 720);
     const augmentedDistribution = buildAugmentedDistribution(convexDistribution, plannedGapJobs);
     setMetrics({ ...augmentedMetrics, synthetic: generatedSamples.length });
     setReportMode("complete");
@@ -736,7 +849,12 @@ export function DataForgeDemoApp() {
     }
 
     await step("reevaluate", "complete", "augmented_evaluation.complete", "Quality improved from 62 to 84. Balance improved from 41 to 78.", 620);
-    await step("export", "complete", "export.ready", "Export manifest is ready with provenance fields for each synthetic sample.", 380);
+    await logAndPersistEvent("success", "loop.evaluated", "Soft orchestrator stopped after 1 loop because confidence reached 93%.");
+    if (activeDatasetId) {
+      await setDatasetStatus({ datasetId: activeDatasetId, status: "report_ready" });
+    }
+    await step("report", "complete", "report.ready", "Report shows 1 loop, 93% confidence, labels corrected, missing labels added, duplicates removed, and clusters identified.", 380);
+    await step("export", "complete", "export.ready", "Export manifest is ready with renamed output filenames and provenance fields for every synthetic sample.", 380);
 
     if (activeDatasetId) {
       await Promise.all([
@@ -787,7 +905,7 @@ export function DataForgeDemoApp() {
           trainingIntent: intent,
           classDistribution: originalDistribution,
           baselineMetrics,
-          scenarioGaps: ["low-light wildlife coverage", "camera-trap night scenes"],
+          scenarioGaps: ["minority Animals-10 class coverage", "100-image class cap"],
         }),
       });
 
@@ -810,7 +928,7 @@ export function DataForgeDemoApp() {
 
     const manifest = {
       product: "DataForge",
-      dataset: "demo-animal-camera-traps.zip",
+      dataset: "animals10-training.zip",
       trainingIntent,
       generatedAt: new Date().toISOString(),
       adapters: {
@@ -818,7 +936,7 @@ export function DataForgeDemoApp() {
         analysis: qualityReport
           ? `${qualityReport.provider}:${qualityReport.model}`
           : "gpt-5.5-fallback",
-        generation: "demo-fal",
+        generation: "fal.ai-demo-cache",
       },
       metrics: {
         baseline: baselineMetrics,
@@ -830,24 +948,106 @@ export function DataForgeDemoApp() {
       },
       qualityReport,
       gapJobs: currentGapJobs,
+      falGeneratedAssets: getFalPreviewAssetManifest(),
       samples,
     };
+    const stamp = createExportStamp();
 
-    const blob = new Blob([JSON.stringify(manifest, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "dataforge-demo-manifest.json";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    logEvent(
-      "export_manifest.downloaded",
-      "Manifest includes original samples, synthetic flags, prompts, and evaluation snapshots.",
+    triggerTextDownload(
+      buildUiDatasetCsv(samples),
+      `dataforge-animals10-final-dataset-${stamp}.csv`,
+      "text/csv;charset=utf-8",
     );
+    triggerTextDownload(
+      buildUiReportMarkdown(manifest),
+      `dataforge-animals10-report-${stamp}.md`,
+      "text/markdown;charset=utf-8",
+    );
+    logEvent(
+      "dataset_export.downloaded",
+      "Final dataset CSV and report downloaded with synthetic flags, prompts, and evaluation snapshots.",
+    );
+  }
+
+  function handleApproveLabel(issueId: string) {
+    const issue = labelIssues.find((item) => item.id === issueId);
+    if (!issue?.suggestedLabel) return;
+
+    const action: LabelDecisionAction = {
+      issueId,
+      sampleId: issue.sampleId ?? issue.sampleKey,
+      action: "accept",
+      finalLabel: issue.suggestedLabel,
+      reviewer: "demo-reviewer",
+      reviewedAt: Date.now(),
+    };
+
+    setReviewSamples((current) => applyLabelDecisions(current, [action]));
+    setLabelIssues((current) => updateLabelIssueStatus(current, issueId, "accepted"));
+    void logAndPersistEvent("success", "label_decision.approved", `${issue.sampleKey} approved as ${issue.suggestedLabel}.`);
+  }
+
+  function handleRejectLabel(issueId: string) {
+    setLabelIssues((current) => updateLabelIssueStatus(current, issueId, "rejected"));
+    void logAndPersistEvent("warning", "label_decision.rejected", `${issueId} rejected by reviewer.`);
+  }
+
+  function handleManualLabel(issueId: string) {
+    setLabelIssues((current) => updateLabelIssueStatus(current, issueId, "manual_review"));
+    void logAndPersistEvent("warning", "label_decision.manual_review", `${issueId} moved to manual review.`);
+  }
+
+  function handleEditLabel(issueId: string, finalLabel: string) {
+    const issue = labelIssues.find((item) => item.id === issueId);
+    if (!issue) return;
+
+    const action: LabelDecisionAction = {
+      issueId,
+      sampleId: issue.sampleId ?? issue.sampleKey,
+      action: "edit",
+      finalLabel,
+      reviewer: "demo-reviewer",
+      reviewedAt: Date.now(),
+    };
+
+    setReviewSamples((current) => applyLabelDecisions(current, [action]));
+    setLabelIssues((current) => updateLabelIssueStatus(current, issueId, "accepted", finalLabel));
+    void logAndPersistEvent("success", "label_decision.edited", `${issue.sampleKey} edited to ${finalLabel}.`);
+  }
+
+  function handleDemoDragOver(event: DragEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  }
+
+  function handleDemoDrop(event: DragEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    void loadDemoDataset();
+  }
+
+  function handleRemoveDuplicate(issueId: string) {
+    const issue = duplicateIssues.find((item) => item.id === issueId);
+    if (!issue) return;
+
+    setReviewSamples((current) => applyDuplicateDecisions(current, [{
+      issueId,
+      sampleId: issue.sampleKey,
+      action: "remove",
+      reviewer: "demo-reviewer",
+      reviewedAt: Date.now(),
+    }]));
+    setDuplicateIssues((current) => updateDuplicateIssueStatus(current, issueId, "removed"));
+    void logAndPersistEvent("success", "duplicate.removed", `${issue.sampleKey} excluded from export as a duplicate.`);
+  }
+
+  function handleKeepDuplicate(issueId: string) {
+    setDuplicateIssues((current) => updateDuplicateIssueStatus(current, issueId, "kept"));
+    void logAndPersistEvent("info", "duplicate.kept", `${issueId} kept in export after review.`);
+  }
+
+  function handleManualDuplicate(issueId: string) {
+    setDuplicateIssues((current) => updateDuplicateIssueStatus(current, issueId, "manual_review"));
+    void logAndPersistEvent("warning", "duplicate.manual_review", `${issueId} moved to manual review.`);
   }
 
   return (
@@ -869,6 +1069,7 @@ export function DataForgeDemoApp() {
             <a href="#pipeline">Pipeline</a>
             <a href="#quality">Quality</a>
             <a href="#synthetics">Synthetics</a>
+            <a href="#sponsors">Sponsors</a>
             <a href="#explorer">Explorer</a>
           </nav>
 
@@ -901,13 +1102,19 @@ export function DataForgeDemoApp() {
                   onChange={(event) => setTrainingIntent(event.target.value)}
                 />
 
-                <button className="dropzone" type="button" onClick={loadDemoDataset}>
+                <button
+                  className="dropzone"
+                  type="button"
+                  onClick={loadDemoDataset}
+                  onDragOver={handleDemoDragOver}
+                  onDrop={handleDemoDrop}
+                >
                   <span className="drop-icon" aria-hidden="true">
                     +
                   </span>
                   <span>
-                    <strong>Drop dataset ZIP</strong>
-                    <small>Mock upload accepts the seeded animal set for this teammate preview.</small>
+                    <strong>Drop training ZIP</strong>
+                    <small>Simulated drag/drop reads the already-unzipped `data/` directory.</small>
                   </span>
                 </button>
 
@@ -919,7 +1126,7 @@ export function DataForgeDemoApp() {
                     disabled={analysisRunning}
                   >
                     <span aria-hidden="true">▣</span>
-                    Load demo animal dataset
+                    Simulate ZIP drop
                   </button>
                   <button
                     className="secondary-button"
@@ -937,27 +1144,27 @@ export function DataForgeDemoApp() {
             <aside className="dataset-rig" aria-label="Demo dataset preview">
               <div className="rig-header">
                 <span>Source Dataset</span>
-                <strong>{datasetLoaded ? "demo-animal-camera-traps.zip" : "No dataset loaded"}</strong>
+                <strong>{datasetLoaded ? "animals10-training.zip" : "No dataset loaded"}</strong>
               </div>
 
               <div className="pixel-field" aria-hidden="true">
                 <div className="pixel-card cat-card">
-                  <span>CAT</span>
+                    <span>CANE</span>
                 </div>
                 <div className="pixel-card dog-card">
-                  <span>DOG</span>
+                    <span>CAV</span>
                 </div>
                 <div className="pixel-card bird-card">
-                  <span>BIRD</span>
+                    <span>ELE</span>
                 </div>
                 <div className="pixel-card fox-card">
-                  <span>FOX</span>
+                    <span>FAR</span>
                 </div>
                 <div className="pixel-card owl-card">
-                  <span>OWL</span>
+                    <span>GAT</span>
                 </div>
                 <div className="pixel-card night-card">
-                  <span>NIGHT</span>
+                    <span>RAG</span>
                 </div>
               </div>
 
@@ -971,8 +1178,8 @@ export function DataForgeDemoApp() {
                     <dd>{datasetLoaded ? activeDatasetClassEntries.length : 0}</dd>
                   </div>
                   <div>
-                    <dt>Low-light</dt>
-                    <dd>{datasetLoaded ? activeDistribution["Low-light Wildlife"] ?? 0 : 0}</dd>
+                    <dt>Smallest</dt>
+                    <dd>{datasetLoaded ? activeDistribution.scoiattolo ?? 0 : 0}</dd>
                   </div>
                 </dl>
 
@@ -996,26 +1203,12 @@ export function DataForgeDemoApp() {
 
             <div className="pipeline-layout">
               <div className="pipeline-card">
-                <div className="pipeline-flow" aria-label="DataForge pipeline stages">
-                  {stages.map((stage) => {
-                    const status = stageStatuses[stage.id] || "queued";
-                    return (
-                      <button
-                        className="flow-node"
-                        type="button"
-                        data-status={status}
-                        aria-label={`${stage.label}: ${status}`}
-                        key={stage.id}
-                      >
-                        <span className="flow-icon" aria-hidden="true">
-                          {stage.icon}
-                        </span>
-                        <strong>{stage.label}</strong>
-                        <small>{status}</small>
-                      </button>
-                    );
-                  })}
-                </div>
+                <PipelineFlow
+                  stages={stages.map((stage) => ({
+                    ...stage,
+                    status: stageStatuses[stage.id] || "queued",
+                  }))}
+                />
               </div>
 
               <aside className="event-panel" aria-label="Live event log">
@@ -1062,24 +1255,33 @@ export function DataForgeDemoApp() {
             <MetricTile
               label="Coverage score"
               value={metrics ? metrics.coverage : "--"}
-              note="Low-light and wildlife gaps"
+              note="Minority animal gaps"
             />
             <MetricTile
               label="Synthetic samples"
               value={metrics?.synthetic ?? visibleSynthetic.length}
-              note="Fal fallback records"
+              note="Fal AI recovery records"
             />
           </section>
 
-          <FeatureIntegrationSlots
-            samples={demoSamples}
-            labelIssues={demoLabelIssues}
-            duplicateIssues={demoDuplicateIssues}
-            balancingPlan={demoBalancingPlan}
-            baselineEvaluation={demoBaselineEvaluation}
-            finalEvaluation={demoFinalEvaluation}
-            qualityReport={demoQualityReport}
-          />
+          <section className="sponsor-section" id="sponsors" aria-labelledby="sponsorTitle">
+            <div className="section-heading">
+              <span>Prize track map</span>
+              <h2 id="sponsorTitle">Where sponsors power DataForge</h2>
+            </div>
+            <div className="sponsor-ledger">
+              {sponsorUsage.map((item) => (
+                <article className="sponsor-row" key={item.sponsor}>
+                  <div>
+                    <span>{item.track}</span>
+                    <strong>{item.sponsor}</strong>
+                  </div>
+                  <p>{item.usage}</p>
+                  <small>{item.proof}</small>
+                </article>
+              ))}
+            </div>
+          </section>
 
           <section className="split-section" id="quality">
             <div className="quality-panel">
@@ -1151,10 +1353,12 @@ export function DataForgeDemoApp() {
               <h2>Targeted synthetic image gallery</h2>
             </div>
 
-              <div className="aux-panels">
-                <RelabelPanel jobs={relabelQueue} completedCount={completedRelabelJobs.length} />
-                <FalSummaryCard summary={falSummary} />
-              </div>
+            <div className="aux-panels">
+              <RelabelPanel jobs={relabelQueue} completedCount={completedRelabelJobs.length} />
+              <FalSummaryCard summary={falSummary} />
+            </div>
+
+            <FalPreviewGallery visibleCount={visibleFalPreviewCount} />
 
             <div className="job-grid">
               {activeJobs.length ? (
@@ -1169,7 +1373,7 @@ export function DataForgeDemoApp() {
                 <article className="empty-state">
                   <span>
                     <strong>No generation jobs yet</strong>
-                    Run analysis to populate fox, owl, and low-light camera-trap samples.
+                    Run analysis to populate bounded Fal AI recovery samples across underfilled Animals-10 classes.
                   </span>
                 </article>
               )}
@@ -1183,17 +1387,17 @@ export function DataForgeDemoApp() {
             </div>
 
             <div className="explorer-toolbar" aria-label="Dataset filters">
-                <label>
-                  Class
-                  <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)}>
-                    <option value="all">All classes</option>
-                    {activeDatasetClassEntries.map(([className]) => (
-                      <option value={className} key={className}>
-                        {className}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+              <label>
+                Class
+                <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)}>
+                  <option value="all">All classes</option>
+                  {activeDatasetClassEntries.map(([className]) => (
+                    <option value={className} key={className}>
+                      {className}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label>
                 Source
                 <select
@@ -1212,7 +1416,7 @@ export function DataForgeDemoApp() {
                 disabled={!analysisComplete}
               >
                 <span aria-hidden="true">↓</span>
-                Export manifest
+                Export dataset + report
               </button>
             </div>
 
@@ -1253,6 +1457,26 @@ export function DataForgeDemoApp() {
               </table>
             </div>
           </section>
+
+          <FeatureIntegrationSlots
+            samples={reviewSamples}
+            labelIssues={labelIssues}
+            duplicateIssues={duplicateIssues}
+            balancingPlan={balancingPlan}
+            baselineEvaluation={demoBaselineEvaluation}
+            finalEvaluation={demoFinalEvaluation}
+            qualityReport={demoQualityReport}
+            disabled={analysisRunning}
+            trainingIntent={trainingIntent}
+            onApproveLabel={handleApproveLabel}
+            onRejectLabel={handleRejectLabel}
+            onManualLabel={handleManualLabel}
+            onEditLabel={handleEditLabel}
+            onRemoveDuplicate={handleRemoveDuplicate}
+            onKeepDuplicate={handleKeepDuplicate}
+            onManualDuplicate={handleManualDuplicate}
+            onExported={(filename) => void logAndPersistEvent("success", "export_manifest.downloaded", `${filename} downloaded from integrated export panel.`)}
+          />
         </main>
       </div>
     </>
@@ -1267,107 +1491,75 @@ type FeatureSlotProps = {
   baselineEvaluation: DataForgeEvaluationSnapshot;
   finalEvaluation: DataForgeEvaluationSnapshot;
   qualityReport: DataForgeQualityReport;
+  disabled: boolean;
+  trainingIntent: string;
+  onApproveLabel: (issueId: string) => void;
+  onRejectLabel: (issueId: string) => void;
+  onManualLabel: (issueId: string) => void;
+  onEditLabel: (issueId: string, finalLabel: string) => void;
+  onRemoveDuplicate: (issueId: string) => void;
+  onKeepDuplicate: (issueId: string) => void;
+  onManualDuplicate: (issueId: string) => void;
+  onExported: (filename: string) => void;
 };
 
 function FeatureIntegrationSlots(props: FeatureSlotProps) {
   return (
-    <section className="dashboard-band" aria-label="Parallel feature integration slots">
-      <div className="section-heading">
-        <span>Integration slots</span>
-        <h2>Parallel feature handoff surface</h2>
-      </div>
-      <div className="job-grid">
-        <LabelAuditPanel samples={props.samples} labelIssues={props.labelIssues} />
-        <DuplicateReviewPanel samples={props.samples} duplicateIssues={props.duplicateIssues} />
-        <QualityReportPanel
-          baselineEvaluation={props.baselineEvaluation}
-          finalEvaluation={props.finalEvaluation}
-          qualityReport={props.qualityReport}
-        />
-        <BalancingPanel balancingPlan={props.balancingPlan} />
-        <DatasetExplorer samples={props.samples} />
-        <ExportManifestButton
-          samples={props.samples}
-          labelIssues={props.labelIssues}
-          duplicateIssues={props.duplicateIssues}
-          balancingPlan={props.balancingPlan}
-          baselineEvaluation={props.baselineEvaluation}
-          finalEvaluation={props.finalEvaluation}
-          qualityReport={props.qualityReport}
-        />
-      </div>
+    <section className="review-workbench" aria-label="Advanced review workbench">
+      <details className="integration-drawer">
+        <summary>
+          <span>
+            <strong>Advanced Review Workbench</strong>
+            <small>Label audit, duplicate review, source-labeled report, balancing, explorer, and export.</small>
+          </span>
+        </summary>
+        <div className="integration-grid">
+          <LabelAuditPanel
+            samples={props.samples}
+            labelIssues={props.labelIssues}
+            disabled={props.disabled}
+            onApprove={props.onApproveLabel}
+            onReject={props.onRejectLabel}
+            onManualReview={props.onManualLabel}
+            onEditLabel={props.onEditLabel}
+          />
+          <DuplicateReviewPanel
+            samples={props.samples}
+            duplicateIssues={props.duplicateIssues}
+            disabled={props.disabled}
+            onRemove={props.onRemoveDuplicate}
+            onKeep={props.onKeepDuplicate}
+            onManualReview={props.onManualDuplicate}
+          />
+          <QualityReportPanel
+            baselineEvaluation={props.baselineEvaluation}
+            finalEvaluation={props.finalEvaluation}
+            qualityReport={props.qualityReport}
+            baselineMetrics={demoBaselineMetrics}
+            finalMetrics={demoFinalMetrics}
+          />
+          <BalancingPanel balancingPlan={props.balancingPlan} classColors={demoClassColors} />
+          <DatasetExplorer
+            samples={props.samples}
+            labelIssues={props.labelIssues}
+            duplicateIssues={props.duplicateIssues}
+          />
+          <ExportManifestButton
+            samples={props.samples}
+            labelIssues={props.labelIssues}
+            duplicateIssues={props.duplicateIssues}
+            balancingPlan={props.balancingPlan}
+            baselineEvaluation={props.baselineEvaluation}
+            finalEvaluation={props.finalEvaluation}
+            qualityReport={props.qualityReport}
+            datasetName="dataforge-clean-animal-dataset"
+            trainingIntent={props.trainingIntent}
+            disabled={props.disabled}
+            onExported={props.onExported}
+          />
+        </div>
+      </details>
     </section>
-  );
-}
-
-function LabelAuditPanel({
-  samples,
-  labelIssues,
-}: {
-  samples: DataForgeDatasetSample[];
-  labelIssues: DataForgeLabelIssue[];
-}) {
-  return <IntegrationSlot title="LabelAuditPanel" detail={`${labelIssues.length} issues across ${samples.length} seeded samples`} />;
-}
-
-function DuplicateReviewPanel({
-  duplicateIssues,
-}: {
-  samples: DataForgeDatasetSample[];
-  duplicateIssues: DataForgeDuplicateIssue[];
-}) {
-  return <IntegrationSlot title="DuplicateReviewPanel" detail={`${duplicateIssues.length} duplicate candidates ready for review`} />;
-}
-
-function QualityReportPanel({
-  baselineEvaluation,
-  finalEvaluation,
-}: {
-  baselineEvaluation: DataForgeEvaluationSnapshot;
-  finalEvaluation: DataForgeEvaluationSnapshot;
-  qualityReport: DataForgeQualityReport;
-}) {
-  return <IntegrationSlot title="QualityReportPanel" detail={`${baselineEvaluation.qualityScore} to ${finalEvaluation.qualityScore} quality delta`} />;
-}
-
-function BalancingPanel({
-  balancingPlan,
-}: {
-  balancingPlan: DataForgeBalancingPlan[];
-}) {
-  return <IntegrationSlot title="BalancingPanel" detail={`${balancingPlan.length} class recommendations seeded`} />;
-}
-
-function DatasetExplorer({
-  samples,
-}: {
-  samples: DataForgeDatasetSample[];
-}) {
-  return <IntegrationSlot title="DatasetExplorer" detail={`${samples.length} records with label provenance`} />;
-}
-
-function ExportManifestButton({
-  samples,
-}: {
-  samples: DataForgeDatasetSample[];
-  labelIssues: DataForgeLabelIssue[];
-  duplicateIssues: DataForgeDuplicateIssue[];
-  balancingPlan: DataForgeBalancingPlan[];
-  baselineEvaluation: DataForgeEvaluationSnapshot;
-  finalEvaluation: DataForgeEvaluationSnapshot;
-  qualityReport: DataForgeQualityReport;
-}) {
-  return <IntegrationSlot title="ExportManifestButton" detail={`${samples.length} export records available after integration`} />;
-}
-
-function IntegrationSlot({ title, detail }: { title: string; detail: string }) {
-  return (
-    <article className="empty-state">
-      <span>
-        <strong>{title}</strong>
-        {detail}
-      </span>
-    </article>
   );
 }
 
@@ -1679,6 +1871,12 @@ function normalizeStringList(value: unknown, fallback: string[]) {
 function normalizeGapJobs(value: unknown): GapJob[] {
   if (!Array.isArray(value)) return fallbackGapJobs;
 
+  const majorityClassCap = Math.max(
+    ...Object.entries(originalDistribution)
+      .filter(([className]) => className !== "Unlabeled")
+      .map(([, count]) => count),
+  );
+
   const jobs = value
     .filter((job): job is PersistedGapJob => {
       if (!isRecord(job)) return false;
@@ -1699,8 +1897,14 @@ function normalizeGapJobs(value: unknown): GapJob[] {
       const fallback = fallbackGapJobs[index] ?? fallbackGapJobs[0];
       const className = typeof job.className === "string" ? job.className : fallback.className;
       const currentCount = toInt(job.currentCount, originalDistribution[className] ?? fallback.currentCount);
-      const targetCount = toInt(job.targetCount, Math.max(currentCount, fallback.targetCount));
-      const syntheticCount = toInt(job.syntheticCount, Math.max(0, targetCount - currentCount));
+      const targetCount = Math.min(
+        majorityClassCap,
+        Math.max(currentCount, toInt(job.targetCount, Math.max(currentCount, fallback.targetCount))),
+      );
+      const syntheticCount = Math.min(
+        Math.max(0, targetCount - currentCount),
+        toInt(job.syntheticCount, Math.max(0, targetCount - currentCount)),
+      );
       const severity = job.severity === "low" || job.severity === "medium" || job.severity === "high"
         ? job.severity
         : fallback.severity;
@@ -1913,7 +2117,7 @@ function normalizeFalJobRuns(value: unknown): FalJobRun[] {
             ? (run as { runId: string }).runId
             : `fal-run-${index}`,
         jobId: typeof run.jobId === "string" ? run.jobId : undefined,
-        provider: typeof run.provider === "string" ? run.provider : "demo-fal",
+        provider: typeof run.provider === "string" ? run.provider : "fal.ai",
         providerRunId: typeof run.providerRunId === "string" ? run.providerRunId : undefined,
         status: parseFalRunStatus(run.status),
         requestedPayload: run.requestedPayload,
@@ -1938,6 +2142,54 @@ function normalizeFalJobRuns(value: unknown): FalJobRun[] {
           : undefined,
       };
     });
+}
+
+function buildAutoLabelActions(labelIssues: DataForgeLabelIssue[]): LabelDecisionAction[] {
+  return labelIssues
+    .filter((issue) => issue.status === "open" && Boolean(issue.suggestedLabel))
+    .filter((issue) => typeof issue.confidence !== "number" || issue.confidence >= 0.82)
+    .map((issue) => ({
+      issueId: issue.id,
+      sampleId: issue.sampleId ?? issue.sampleKey,
+      action: "accept" as const,
+      finalLabel: issue.suggestedLabel,
+      reviewer: "demo-reviewer",
+      reviewedAt: Date.now(),
+    }));
+}
+
+function updateLabelIssueStatus(
+  issues: DataForgeLabelIssue[],
+  issueId: string,
+  status: DataForgeLabelIssue["status"],
+  suggestedLabel?: string,
+) {
+  return issues.map((issue) =>
+    issue.id === issueId
+      ? {
+          ...issue,
+          status,
+          suggestedLabel: suggestedLabel ?? issue.suggestedLabel,
+          reviewedAt: Date.now(),
+        }
+      : issue,
+  );
+}
+
+function updateDuplicateIssueStatus(
+  issues: DataForgeDuplicateIssue[],
+  issueId: string,
+  status: DataForgeDuplicateIssue["status"],
+) {
+  return issues.map((issue) =>
+    issue.id === issueId
+      ? {
+          ...issue,
+          status,
+          reviewedAt: Date.now(),
+        }
+      : issue,
+  );
 }
 
 function summarizeFalRuns(runs: FalJobRun[]): FalJobSummary {
@@ -1993,6 +2245,8 @@ function resolveDashboardMetrics(
   if (
     datasetStatus === "complete" ||
     datasetStatus === "reevaluating" ||
+    datasetStatus === "report_ready" ||
+    datasetStatus === "repairing" ||
     datasetStatus === "analysis_ready" ||
     datasetStatus === "balancing"
   ) {
@@ -2016,6 +2270,8 @@ function deriveReportModeFromStatus(
 
   if (
     datasetStatus === "reevaluating" ||
+    datasetStatus === "report_ready" ||
+    datasetStatus === "repairing" ||
     datasetStatus === "label_review" ||
     datasetStatus === "balancing"
   ) {
@@ -2077,29 +2333,40 @@ function mapSnapshotToMetrics(snapshot: unknown): Metrics | null {
 }
 
 function buildAugmentedDistribution(distribution: Record<string, number>, jobs: GapJob[]) {
-  const nextDistribution = { ...distribution };
+  const nextDistribution = Object.fromEntries(
+    Object.entries(distribution).filter(([className]) => className !== "Unlabeled"),
+  ) as Record<string, number>;
+
   for (const job of jobs) {
-    nextDistribution[job.className] = (nextDistribution[job.className] ?? job.currentCount) + job.syntheticCount;
+    nextDistribution[job.className] = Math.min(
+      job.targetCount,
+      (nextDistribution[job.className] ?? job.currentCount) + job.syntheticCount,
+    );
   }
+
   return nextDistribution;
 }
 
 function buildOriginalSamples(): Sample[] {
   const scenarios: Record<string, string[]> = {
-    Cats: ["indoor daylight", "window light", "sofa portrait"],
-    Dogs: ["park daylight", "street walk", "yard profile"],
-    Birds: ["branch daylight", "sky profile", "feeder closeup"],
-    Foxes: ["woodland edge", "field daylight"],
-    Owls: ["perched daylight", "tree hollow"],
-    "Low-light Wildlife": ["dim trail camera"],
+    cane: ["dog portrait", "outdoor dog", "companion animal"],
+    cavallo: ["horse profile", "pasture", "stable"],
+    elefante: ["elephant herd", "savanna", "close portrait"],
+    farfalla: ["butterfly macro", "flower landing", "wing profile"],
+    gallina: ["chicken coop", "farm yard", "rooster profile"],
+    gatto: ["cat portrait", "indoor cat", "window light"],
+    mucca: ["cow pasture", "dairy barn", "field profile"],
+    pecora: ["sheep pasture", "wool closeup", "flock"],
+    ragno: ["spider macro", "web detail", "dark background"],
+    scoiattolo: ["squirrel tree", "forest floor", "nut foraging"],
   };
 
-  return Object.entries(originalDistribution).flatMap(([className, count]) => {
+  return Object.entries(originalDistribution).filter(([className]) => className !== "Unlabeled").flatMap(([className, count]) => {
     return Array.from({ length: Math.min(count, 12) }).map((_, index) => ({
       id: `${slug(className)}-${String(index + 1).padStart(3, "0")}`,
       className,
       source: "original",
-      scenario: scenarios[className][index % scenarios[className].length],
+      scenario: scenarios[className]?.[index % (scenarios[className]?.length ?? 1)] ?? "folder-derived sample",
       status: count < 20 ? "gap candidate" : "accepted",
     }));
   });
@@ -2107,13 +2374,16 @@ function buildOriginalSamples(): Sample[] {
 
 function buildSyntheticSamples(jobs: GapJob[]): Sample[] {
   return jobs.flatMap((job) => {
-    return Array.from({ length: job.syntheticCount }).map((_, index) => ({
-      id: `syn-${slug(job.className)}-${String(index + 1).padStart(3, "0")}`,
-      className: job.className,
-      source: "synthetic",
-      scenario: job.className === "Low-light Wildlife" ? "night camera trap" : "targeted class repair",
-      status: "pending review",
-    }));
+    return falSyntheticSamples
+      .filter((sample) => sample.finalLabel === job.className)
+      .slice(0, job.syntheticCount)
+      .map((sample) => ({
+        id: sample.id,
+        className: job.className,
+        source: "synthetic",
+        scenario: "bounded Animals-10 class repair",
+        status: "Fal AI synthetic",
+      }));
   });
 }
 
@@ -2122,6 +2392,10 @@ function makeQueuedStages(): Record<string, StageStatus> {
     string,
     StageStatus
   >;
+}
+
+function renderStageStatus(status: StageStatus) {
+  return status === "queued" ? "pending" : status;
 }
 
 function totalCount(distribution: Record<string, number>) {
@@ -2152,6 +2426,106 @@ function slug(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
+function buildUiDatasetCsv(records: Sample[]) {
+  const columns = ["sample_id", "class", "source", "scenario", "status"];
+  const lines = [columns.join(",")];
+
+  for (const sample of records) {
+    lines.push([
+      csvCell(sample.id),
+      csvCell(sample.className),
+      csvCell(sample.source),
+      csvCell(sample.scenario),
+      csvCell(sample.status),
+    ].join(","));
+  }
+
+  return lines.join("\n");
+}
+
+function buildUiReportMarkdown(manifest: {
+  dataset: string;
+  trainingIntent: string;
+  generatedAt: string;
+  metrics: { baseline: Metrics; augmented: Metrics | null };
+  classDistribution: {
+    source: Record<string, number>;
+    augmented: Record<string, number>;
+  };
+  falGeneratedAssets: ReturnType<typeof getFalPreviewAssetManifest>;
+}) {
+  const augmented = manifest.metrics.augmented;
+
+  return [
+    "# DataForge Export Report",
+    "",
+    `Dataset: ${manifest.dataset}`,
+    `Generated: ${manifest.generatedAt}`,
+    `Training intent: ${manifest.trainingIntent}`,
+    "",
+    "## Output Files",
+    "- Final dataset CSV: clean sample rows with class, source, scenario, and status.",
+    "- This report: quality delta, provider boundaries, and Fal AI provenance.",
+    "",
+    "## Quality Delta",
+    `- Quality: ${manifest.metrics.baseline.quality} -> ${augmented?.quality ?? "pending"}`,
+    `- Balance: ${manifest.metrics.baseline.balance} -> ${augmented?.balance ?? "pending"}`,
+    `- Coverage: ${manifest.metrics.baseline.coverage} -> ${augmented?.coverage ?? "pending"}`,
+    `- Consistency: ${manifest.metrics.baseline.consistency} -> ${augmented?.consistency ?? "pending"}`,
+    "",
+    "## Sponsor Usage",
+    "- OpenAI GPT-5.5: structured quality report and repair-plan copy.",
+    "- Adaption Labs: manifest-level baseline and final quality snapshots only.",
+    "- Convex: realtime dataset state, pipeline events, review state, and Fal telemetry.",
+    "- Fal: cached generated recovery images for measured class gaps, marked synthetic.",
+    "- Vercel: Next.js app and API route deployment surface.",
+    "",
+    "## Fal AI Generated Assets",
+    ...manifest.falGeneratedAssets.map((asset) => (
+      `- ${asset.className}: ${asset.rawCount} raw + ${asset.generatedCount} generated = ${asset.majorityClassCap}`
+    )),
+    "",
+    "## Readiness Claim",
+    "DataForge improves dataset readiness: labeling completeness, balance, consistency, and provenance. It does not claim trained-model accuracy improvement.",
+    "",
+  ].join("\n");
+}
+
+function triggerTextDownload(contents: string, filename: string, type: string) {
+  const blob = new Blob([contents], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function createExportStamp() {
+  const date = new Date();
+  const pad = (value: number) => String(value).padStart(2, "0");
+
+  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}`;
+}
+
+function csvCell(value: unknown) {
+  if (value === undefined || value === null) return "";
+  const text = String(value);
+  if (/[",\n\r]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function withClientTimeout<T>(promise: Promise<T>, ms: number) {
+  return Promise.race([
+    promise,
+    new Promise<null>((resolve) => window.setTimeout(() => resolve(null), ms)),
+  ]);
 }

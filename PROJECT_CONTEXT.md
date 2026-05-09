@@ -13,7 +13,7 @@ Top demo features:
 1. **Labelize:** detect unlabeled images, suggest labels, and let a human approve them.
 2. **Relabel:** flag wrong labels, such as a cat labeled as a dog, and preserve original-label provenance.
 3. **Deduplicate:** detect duplicate or near-duplicate images and remove approved duplicates from export.
-4. **Balance:** convert skewed distributions, such as 90 cats and 20 dogs, into a target balance plan such as 90 cats and 80 dogs using class weights, sampling recommendations, or optional additions.
+4. **Balance:** convert skewed Animals-10 distributions, such as `cane=100` and `scoiattolo=20`, into a capped 100-images-per-animal target using class weights, sampling recommendations, or optional additions.
 5. **Prove improvement:** evaluate the before/after repair manifest and derived quality metrics, iterate via the soft orchestrator if needed, then export a clean labeled dataset (with renamed files) and report.
 
 30-second judge pitch:
@@ -61,11 +61,11 @@ For the AI Engineer hackathon, DataForge should optimize for four judging moment
 3. **Balancing usefulness:** DataForge should produce a concrete balancing plan for underrepresented classes through weights, sampling recommendations, and optional targeted synthetic or collected additions.
 4. **Convex visibility:** the entire pipeline should be visible live through a realtime dashboard.
 
-The MVP should focus on one clean dataset type: **partially labeled animal image classification datasets**. Supporting CSV, JSON, and arbitrary images is useful later, but a 7-hour build should prioritize a pre-prepared animal classifier demo with deliberate class imbalance, missing labels, and obvious mislabeled samples such as a cat image placed in the dog class. Animal classes are visually obvious, easy for judges to understand, and ideal for showing label completion, relabeling, and balancing without training a model.
+The MVP should focus on one clean dataset type: **partially labeled Animals-10 image classification datasets**. Supporting CSV, JSON, and arbitrary images is useful later, but a 7-hour build should prioritize a pre-prepared animal classifier demo with deliberate class imbalance, missing labels, and obvious cross-class mislabeled samples. Animal classes are visually obvious, easy for judges to understand, and ideal for showing label completion, relabeling, and balancing without training a model.
 
 The prepared animal subset must stay intentionally imbalanced. Do not downsample every class to the same count. Keep a bounded random sample per animal class between 20 and 100 images, with majority classes near 100 and minority classes near 20. This creates the bias and balance gap the demo is supposed to repair. Fal-generated images should be used only after the balancing plan identifies underrepresented classes and the user approves optional synthetic additions needed to move minority classes toward the target distribution.
 
-**Crucial Demo Optimization:** Generating hundreds of images takes too long for a 3-hour build and a 2-minute demo. Therefore, the images previously deleted to create the dataset imbalance (from commit `7dbd4f14`) will be recovered and injected instantly during the "Balance" stage. In the UI and the pitch, these are called **actual synthetic images from fal ai**, preserving the exact real-world workflow and data provenance (`source: "synthetic"`, `provider: "fal.ai"`) without the latency of live inference.
+**Crucial Demo Optimization:** Generating hundreds of images takes too long for a 3-hour build and a 2-minute demo. Therefore, cached Fal AI recovery outputs are injected instantly during the "Balance" stage. In the UI and the pitch, these are called **actual synthetic images from fal ai**, preserving the exact real-world workflow and data provenance (`source: "synthetic"`, `provider: "fal.ai"`) without the latency of live inference. Cached generated assets stay separate from the raw source dataset under `data/animals/fal-ai-generated/`; each animal class totals exactly 100 images across `data/animals/raw-img/<class>/` plus `data/animals/fal-ai-generated/<class>/`. `cane` has 100 raw images and needs 0 generated additions.
 
 ## 2. Core Positioning
 
@@ -100,8 +100,8 @@ Critical provider boundary:
 - **Gap:** A measurable issue in the dataset, such as an underrepresented class, missing label, missing scenario, duplicate sample, or label inconsistency.
 - **Balancing Plan:** A structured set of recommended class weights, sampling adjustments, or optional additions for underrepresented classes.
 - **Repair Plan:** A GPT-5.5-generated structured set of recommended actions based on manifest quality metrics, visual-audit issues, missing labels, and dataset metadata.
-- **Synthetic Generation Job:** Optional stretch Fal job that generates new samples for a specific underrepresented class or scenario.
-- **Synthetic Sample:** Optional generated sample tagged with its source provider, prompt, target class, and generation job ID.
+- **Synthetic Generation Job:** Optional stretch Fal job that adds approved samples for a specific underrepresented class or scenario, bounded by the majority-class cap.
+- **Synthetic Sample:** Optional generated or precomputed Fal recovery sample tagged with its source provider, prompt, target class, generation job ID, and synthetic badge.
 - **Corrected Dataset:** The source dataset after approved label completions and corrections.
 - **Balanced Dataset:** The labelized dataset plus class weights, sampling metadata, and optional approved additions for underrepresented classes.
 - **Augmented Dataset:** The corrected dataset plus optional approved synthetic samples and adaptations.
@@ -128,7 +128,7 @@ Critical provider boundary:
 ### 3.3 Phase 1: Entry, Upload, and Dataset Normalization
 
 1. **Landing Page:** User lands on a technical dashboard-style page with the promise: "Evaluate and repair your training dataset before you train."
-2. **Dataset Upload:** User uploads a ZIP of images, an image manifest CSV/JSON, or both. For the hackathon MVP demo, the "upload" action will be simulated by reading directly from the local `data/` directory. This ensures the pre-configured, deliberately imbalanced dataset is loaded instantly and reliably without network file-transfer delays.
+2. **Dataset Upload:** User uploads or drag/drops a ZIP of images, an image manifest CSV/JSON, or both. For the hackathon MVP demo, the ZIP ingest is simulated by reading directly from the already-unzipped local `data/` directory. This ensures the pre-configured, deliberately imbalanced dataset is loaded instantly and reliably without network file-transfer delays.
 3. **File Validation:** The app validates file type, file size, and basic structure. MVP file size should be capped to avoid timeouts and excessive memory usage.
 4. **Dataset Parsing:** The app extracts existing labels, missing-label count, sample count, class distribution, and previewable records. For image datasets, it shows thumbnails grouped by current label, unlabeled status, and suspected issue state.
 5. **Convex Dataset Record:** The app creates a dataset project in Convex with status `uploaded` and logs the first event.
@@ -228,9 +228,9 @@ Edge cases:
 
 ### 3.8 Phase 6: Realtime Dashboard and Review
 
-1. **Pipeline Stepper:** Dashboard shows upload, ingest, evaluate, labelize, balance, re-evaluate, and export states.
+1. **Pipeline Graph:** Dashboard uses React Flow to show normalize, evaluate, labelize, deduplicate, balance, repair, re-evaluate, report, and export states.
 2. **Metric Cards:** Total samples, unlabeled samples, newly labeled samples, corrected labels, class count, quality score, imbalance score, label issues.
-3. **Distribution Charts:** Recharts shows original versus final labeled distribution and recommended class weights.
+3. **Distribution Charts:** The dashboard shows original versus final labeled distribution and recommended class weights.
 4. **Live Event Log:** Convex powers event streaming without refresh.
 5. **Dataset Explorer:** User filters samples by class, source, label status, label issue, or optional synthetic status.
 6. **Result Summary:** Final panel explains the improvement delta and recommended next step.
@@ -268,8 +268,8 @@ DataForge should use a lean, hackathon-friendly architecture with one web app, C
 - **Language:** TypeScript.
 - **Styling:** Tailwind CSS with a dark, technical UI.
 - **Components:** shadcn/ui or lightweight custom components.
-- **Charts:** Recharts for class distribution, score trends, and before/after comparisons.
-- **Pipeline Visualization:** React Flow for a simulated model pipeline hero showing Upload -> Evaluate -> Labelize -> Deduplicate -> Balance -> Re-evaluate -> Loop (Soft Orchestrator) -> Export.
+- **Charts:** Lightweight dashboard charts for class distribution, score trends, and before/after comparisons.
+- **Pipeline Visualization:** React Flow graph showing Normalize -> Evaluate -> Labelize -> Deduplicate -> Balance -> Repair -> Re-evaluate -> Report -> Export. It should stay read-only for the demo while reflecting Convex stage status changes.
 - **Upload:** react-dropzone for file upload.
 - **Parsing:** Papa Parse for CSV, native JSON parsing, JSZip for ZIP, image metadata extraction where needed.
 - **Realtime Backend:** Convex for datasets, stage updates, events, missing labels, label issues, balancing plans, optional additions, and dashboard subscriptions.
@@ -312,7 +312,7 @@ If provider keys are missing, DataForge should use deterministic fallback behavi
 
 - **`/` Home / Upload:** Dataset upload, training intent, task type, and analysis CTA.
 - **`/datasets/:datasetId` Dashboard:** Live pipeline status, report, label completion queue, relabeling queue, balancing plan, charts, and dataset explorer.
-- **Dashboard Pipeline Hero:** Fixed React Flow graph with seven nodes and six edges. Each node reflects Convex-backed status and can open a detail panel, but users cannot create, move, delete, or reconnect nodes in the MVP.
+- **Dashboard Pipeline Hero:** Fixed graph with nine nodes. Each node reflects Convex-backed status and can open a detail panel, but users cannot create, move, delete, or reconnect nodes in the MVP.
 - **`/datasets/:datasetId/export` Export View:** Optional stretch route for manifest, data card, and ZIP export.
 - **Server Route or Action: `createDataset`:** Creates Convex dataset record and stores upload metadata.
 - **Server Route or Action: `analyzeDataset`:** Runs parsing, Adaption Labs baseline evaluation, missing-label detection, label issue detection, GPT-5.5 report, and stage updates.
@@ -330,7 +330,7 @@ For the hackathon, server actions can be simple wrappers that call Convex mutati
 Represents one dataset project.
 
 - `name` string
-- `status` enum: `uploaded`, `analyzing`, `evaluated`, `label_review`, `balancing`, `reevaluating`, `complete`, `error`
+- `status` enum: `uploaded`, `analyzing`, `evaluated`, `label_review`, `analysis_ready`, `balancing`, `repairing`, `reevaluating`, `report_ready`, `complete`, `error`
 - `task_type` enum: `classification`, `object_detection`, `segmentation`, `regression`, `unknown`
 - `training_intent` string
 - `format` enum: `csv`, `json`, `zip_images`, `image_manifest`
@@ -355,7 +355,7 @@ Stores previewable metadata for samples. For MVP, do not store every large file 
 - `duplicate_status` optional enum: `unique`, `suspected_duplicate`, `removed`, `kept`
 - `image_url` optional string
 - `row_preview` optional any
-- `source` enum: `original`, `synthetic`, `external`
+- `source` enum: `original`, `synthetic`
 - `provider` optional string
 - `prompt` optional string
 - `quality_flags` optional array
@@ -413,7 +413,7 @@ Tracks suspected duplicate or near-duplicate images and review decisions.
 Stores source-labeled provider metrics, deterministic metrics, and derived metrics for each dataset version.
 
 - `dataset_id` id
-- `version` enum: `baseline`, `labelized`, `balanced`, `augmented`
+- `version` enum: `baseline`, `augmented`
 - `provider` string
 - `quality_score` optional number
 - `balance_score` optional number
@@ -429,12 +429,14 @@ Stores the GPT-5.5 structured analysis.
 
 - `dataset_id` id
 - `evaluation_snapshot_id` optional id
-- `summary` string
-- `imbalance_score` number
-- `gaps` array
-- `bias_flags` array
-- `label_issues` array
-- `recommended_actions` array
+- `provider` string
+- `model` string
+- `response_id` optional string
+- `fallback_reason` optional string
+- `measured_findings` array
+- `repair_plan` array
+- `completion_summary` array
+- `next_steps` array
 - `created_at` number
 
 #### `pipeline_stages`
@@ -442,13 +444,13 @@ Stores the GPT-5.5 structured analysis.
 Tracks each visible pipeline step.
 
 - `dataset_id` id
-- `stage` enum: `upload`, `ingest`, `evaluate`, `labelize`, `balance`, `adapt`, `reevaluate`, `export`
-- `status` enum: `queued`, `running`, `complete`, `error`
+- `stage` enum: `normalize`, `evaluate`, `labelize`, `deduplicate`, `balance`, `repair`, `reevaluate`, `report`, `export`
+- `status` enum: `queued`, `running`, `complete`, `error`, `skipped`, `degraded`
 - `progress` optional number
-- `metrics` optional any
-- `error_message` optional string
+- `message` optional string
 - `started_at` optional number
 - `completed_at` optional number
+- `updated_at` number
 
 #### `gap_jobs`
 
@@ -459,13 +461,31 @@ Tracks optional proposed additions for underrepresented classes. For the MVP thi
 - `scenario` optional string
 - `current_count` number
 - `target_count` number
-- `generation_count` number
+- `synthetic_count` number
+- `type` optional enum: `generate`, `relabel`
 - `prompt` string
 - `status` enum: `proposed`, `approved`, `running`, `complete`, `error`, `rejected`
 - `fal_job_id` optional string
 - `images_generated` number
 - `created_at` number
 - `updated_at` number
+
+#### `fal_job_runs`
+
+Tracks Fal recovery or generation telemetry separately from the balancing recommendation itself.
+
+- `dataset_id` id
+- `job_id` optional id
+- `provider` string
+- `provider_run_id` optional string
+- `status` enum: `queued`, `running`, `complete`, `error`
+- `requested_payload` optional any
+- `response_payload` optional any
+- `image_count` optional number
+- `updated_records` optional number
+- `started_at` optional number
+- `completed_at` optional number
+- `created_at` number
 
 #### `events`
 
@@ -474,6 +494,7 @@ Realtime event log for dashboard visibility.
 - `dataset_id` id
 - `timestamp` number
 - `level` enum: `info`, `warning`, `error`, `success`
+- `event_name` string
 - `message` string
 - `metadata` optional any
 
@@ -481,37 +502,33 @@ Realtime event log for dashboard visibility.
 
 The pipeline should be explicit, even if some stages are mocked during the demo.
 
-1. `uploaded`: Dataset file accepted and parsed.
-2. `ingest_running`: Adaption Labs ingest started.
-3. `baseline_evaluate_running`: Baseline evaluation requested.
-4. `baseline_evaluated`: Baseline metrics stored.
-5. `labelize_running`: missing labels and likely wrong labels are being identified.
-6. `label_review_ready`: suggested label completions and corrections are available for user review.
-7. `labels_applied`: approved label decisions have been applied to the manifest.
-8. `dedupe_running`: duplicate and near-duplicate images are being identified.
-9. `dedupe_review_ready`: duplicate removal decisions are available for user review.
-10. `dedupe_applied`: approved duplicate removals have been applied to the export manifest.
-11. `balance_running`: class distribution and weightage recommendations are being calculated.
-12. `balance_ready`: class weights, sampling recommendations, and optional additions are available.
-13. `analysis_running`: GPT-5.5 report generation running.
-14. `analysis_ready`: Quality report and balancing plan available.
-15. `reevaluating`: clean labelized and deduplicated dataset sent back to Adaption Labs.
-16. `complete`: Improvement delta available.
-17. `error`: Terminal failure with actionable message.
+1. `uploaded`: Dataset accepted, parsed, and normalized from folder-derived labels.
+2. `analyzing`: Baseline manifest evaluation, visual audit, dedupe, balancing, repair, and report stages are in flight.
+3. `evaluated`: Baseline metrics are stored.
+4. `label_review`: Suggested label completions and corrections are available for user review when the demo is run manually.
+5. `analysis_ready`: GPT-5.5 report and bounded balancing plan are available.
+6. `balancing`: Fal recovery records are being injected or generated for approved underrepresented classes.
+7. `repairing`: Approved label, duplicate, and balancing decisions are being applied to the export manifest.
+8. `reevaluating`: Clean labelized and deduplicated manifest is being evaluated again.
+9. `report_ready`: Final report, loop metrics, and improvement summary are ready.
+10. `complete`: Export-ready manifest and improvement delta are available.
+11. `error`: Terminal failure with actionable message.
 
 Every state transition should write both a `pipeline_stages` update and an `events` row. This makes the dashboard feel alive and makes debugging easier.
 
-React Flow node mapping:
+Pipeline node mapping:
 
-- **Upload:** dataset parsed and previewed.
-- **Evaluate:** Adaption Labs baseline quality evaluation.
+- **Normalize:** dataset parsed and converted into a manifest from folder-derived labels.
+- **Evaluate:** Adaption-compatible baseline manifest quality evaluation.
 - **Labelize:** missing labels, likely mislabeled samples, and suggested final labels.
 - **Deduplicate:** exact or near-duplicate image review and removal decisions.
 - **Balance:** class weights, sampling recommendations, and optional additions.
-- **Re-evaluate:** Adaption Labs clean labeled and deduplicated dataset evaluation.
+- **Repair:** approved labels, duplicate removals, and bounded Fal records applied to the manifest.
+- **Re-evaluate:** Adaption-compatible clean labeled and deduplicated manifest evaluation.
+- **Report:** GPT-5.5 report, loop confidence, and completion summary.
 - **Export:** downloadable manifest or final dataset package.
 
-React Flow is only a visualization layer. Convex remains the source of truth for node status, stage metrics, logs, missing labels, label issues, duplicate issues, balancing plans, and optional generated sample records. Recharts remains responsible for quantitative charts.
+The graph is only a visualization layer. Convex remains the source of truth for node status, stage metrics, logs, missing labels, label issues, duplicate issues, balancing plans, and optional generated sample records. Quantitative charts remain responsible for before/after distributions.
 
 ### 4.5 Provider Adapter Architecture
 
@@ -582,7 +599,7 @@ Adaption Labs is the primary sponsor target and an important integration, but it
 
 Hard boundary:
 
-- Do not say Adaption Labs reads image datasets or visually detects cats, dogs, duplicates, or low-light scenarios.
+- Do not say Adaption Labs reads image datasets or visually detects animal classes, duplicates, or scenario gaps.
 - Do say DataForge normalizes image datasets into a tabular repair manifest that can be evaluated, exported, and compared before/after.
 - Do say image understanding comes from seeded demo truth first, with GPT Vision/Gemini as the live implementation path if time allows.
 - Do label fallback metrics as DataForge demo metrics if the live Adaption API is not called.
@@ -632,7 +649,7 @@ Outputs:
 - Target label.
 - Generation job ID.
 
-Generated samples should be displayed before inclusion if time allows. If the MVP auto-includes generated images, the UI must still tag them as synthetic.
+Generated samples should be displayed before inclusion if time allows. If the MVP auto-includes generated images, the UI must still tag them as synthetic. The current demo shows cached Fal AI recovery images with `✨ Fal AI` badges, provider provenance, prompt, source path, and majority-cap metadata. Every animal class totals exactly 100 images across raw plus generated assets.
 
 ### 4.9 Upload, Privacy, and Safety Constraints
 
@@ -672,10 +689,10 @@ Track for every dataset run:
 Hackathon cost controls & Demo Constraints:
 
 - **Strict 2-Minute Demo Rule:** Real-world CV processing takes 30+ minutes. To fit the demo format, **the entire pipeline may be mocked with pre-computed data.**
-- All backend processes must be simulated using artificial wait times, spinners, and progress visuals unless a live call has already been proven reliable. This includes manifest evaluation, vision-model label detection, duplicate detection, re-evaluation, and Fal AI synthetic image generation (which will instantly load the held-out "deleted" images).
+- All backend processes must be simulated using artificial wait times, spinners, and progress visuals unless a live call has already been proven reliable. This includes manifest evaluation, vision-model label detection, duplicate detection, re-evaluation, and Fal AI synthetic image generation, which instantly reveals cached generated recovery assets during the demo.
 - The demo must not imply that Adaption Labs inspected image pixels. Use seeded visual-audit results or GPT Vision/Gemini for image-specific findings.
 - Limit preview analysis to first 100 rows or 12 to 24 images.
-- Limit optional synthetic generation to 10 images per class by default.
+- Limit optional synthetic generation to the measured class gap; for the demo, generated counts range from 0 for `cane` to 80 for `scoiattolo` so each class totals 100 images.
 - Cap total optional generated images per dataset.
 - Cache demo results for the prepared dataset and rely exclusively on the precomputed fallback run for the live presentation.
 
@@ -690,7 +707,7 @@ Hackathon cost controls & Demo Constraints:
 - Seeded visual-audit or GPT Vision/Gemini-assisted label completion and relabeling queue for partially labeled image classification datasets.
 - Duplicate image review and removal queue using seeded defects, file hashes, perceptual hashes, or GPT Vision/Gemini where available.
 - Class balancing plan with weights, sampling recommendations, and visible before/after distribution.
-- Recharts dashboard for before/after class distribution, missing-label delta, label issue delta, and quality delta.
+- Dashboard charts for before/after class distribution, missing-label delta, label issue delta, and quality delta.
 - Pre-prepared demo dataset with imbalance, missing labels, and known mislabeled examples.
 
 **Stretch stack:**
@@ -727,23 +744,23 @@ Prepare a small image classification dataset before the hackathon. The dataset s
 Recommended demo:
 
 - Task: animal image classification across pets and wildlife.
-- Source Path: The pre-processed images are stored in the local `data/animals/raw-img/` directory, which the demo will use as the target of the simulated ZIP upload.
-- Training intent: "Train an animal image classifier that works across common pets and wildlife, including low-light camera-trap photos."
+- Source Path: The pre-processed images are stored in the local `data/animals/raw-img/` directory, which the demo will use as the unzipped target of the simulated ZIP upload.
+- Training intent: "Train an Animals-10 image classifier across dogs, horses, elephants, butterflies, chickens, cats, cows, sheep, spiders, and squirrels."
 - Class count targets should intentionally range from 20 to 100 images per animal class.
 - Majority classes should sit near 80 to 100 images.
 - Minority classes should sit near 20 to 40 images.
 - The class imbalance is intentional and should remain visible before repair.
 - Fal should generate approved synthetic additions for underrepresented classes only after the balancing plan identifies the gap.
-- Scenario gap: night-time or low-light wildlife examples, 0 to 5 images.
+- Scenario gap: underfilled animal classes, from `cavallo=90` down to `scoiattolo=20` raw images.
 - Missing-label seed: 15 to 30 images in an unlabeled or unknown folder.
-- Label issue seed: 5 to 10 intentionally mislabeled images, such as cats in the dog folder, foxes labeled as dogs, or owls labeled as birds.
+- Label issue seed: 5 to 10 intentionally mislabeled cross-class images, such as cane/gatto, cavallo/mucca, farfalla/gallina, or ragno/scoiattolo swaps.
 
 Expected demo result:
 
-- Seeded visual-audit results or GPT Vision/Gemini flag missing labels, likely wrong labels, fox and owl underrepresentation, and low-light wildlife gaps.
+- Seeded visual-audit results or GPT Vision/Gemini flag missing labels, likely wrong labels, and underfilled Animals-10 classes.
 - GPT-5.5 explains why the suspected labels are risky, suggests labels and corrected labels for review, and summarizes the balancing plan.
-- User approves obvious completions and corrections, such as labeling an unknown owl image and moving a cat image out of the dog class.
-- DataForge applies class weights or sampling recommendations for foxes, owls, and low-light wildlife.
+- User approves obvious completions and corrections, such as labeling unknown animal images and moving cross-class mistakes back to the right Animals-10 class.
+- DataForge applies class weights or sampling recommendations for underfilled Animals-10 classes, then reveals cached Fal AI additions only up to 100 total images per animal.
 - Final quality snapshot improves labeling completeness, balance, consistency, or quality metrics, with source labels distinguishing Adaption manifest metrics from deterministic demo metrics.
 - Convex dashboard shows the full sequence live.
 

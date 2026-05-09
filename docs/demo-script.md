@@ -6,8 +6,8 @@
 **Presenter:** "Hi everyone, this is DataForge. We don't train models; we fix the datasets before the models ever see them. AI teams spend weeks debugging architecture when the real problem is data quality. As we like to say: a cat in the dog folder quietly poisons training before the model ever starts."
 
 ## Step 1: Upload & Baseline Evaluation (0:15 - 0:35)
-*(Presenter clicks "Upload ZIP" simulating loading the local `data/` directory)*
-**Presenter:** "We're loading a deliberately corrupted subset of the Animals-10 dataset. Immediately, DataForge runs a baseline evaluation. You can see we have missing labels, duplicates, and a severe class imbalance—90 cats but only 20 dogs. We're using Adaption Labs to run a rigorous manifest-level quality evaluation so we know exactly where we stand."
+*(Presenter drags the simulated training ZIP onto the dropzone, which reads the already-unzipped local `data/` directory)*
+**Presenter:** "We're loading a deliberately corrupted subset of the Animals-10 dataset. The ZIP interaction is simulated, but the input is the real unzipped `data/animals/raw-img` folder. Immediately, DataForge runs a baseline evaluation. You can see missing labels, duplicates, and a severe class imbalance: `cane` has 100 raw images while `scoiattolo` has only 20. We're using Adaption Labs for a manifest-level quality evaluation so we know exactly where we stand."
 
 ## Step 2: Visual Audit & Relabeling (0:35 - 1:00)
 *(Presenter clicks "Analyze Dataset", simulating the visual audit)*
@@ -23,10 +23,10 @@
 *(Presenter removes a duplicate)*
 
 ## Step 4: Balancing with Fal AI (1:15 - 1:35)
-*(Presenter navigates to the Balancing Panel)*
-**Presenter:** "Now for the imbalance. We have too few dogs. DataForge generates a balancing plan. I'll click 'Run Fal AI Generation'.
-*(3-second mocked loader appears, then reveals the generated images)*
-"In seconds, we've injected actual synthetic images from Fal AI to balance our classes. Notice the '✨ Fal AI' badges—we maintain strict data tracking so you always know which images are synthetic."
+*(Presenter scrolls to the Fal generation jobs section after analysis completes)*
+**Presenter:** "Now for the imbalance. DataForge creates a bounded balancing plan, then reveals cached `fal.ai` generated recovery outputs without waiting for live generation on stage.
+*(The generated-image gallery is visible with provider badges and cap metadata)*
+"Notice the '✨ Fal AI' badges. Every class totals exactly 100 images across raw plus generated assets, and we maintain strict data tracking so you always know which images are synthetic, where they came from, and why they were added."
 
 ## Step 5: Re-evaluate & Export (1:35 - 2:00)
 *(Presenter reviews the Quality Report Panel and clicks 'Export Manifest')*

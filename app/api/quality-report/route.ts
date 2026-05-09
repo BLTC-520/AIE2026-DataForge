@@ -23,7 +23,7 @@ const gapJobSchema = z.object({
   className: z.string().min(2).max(48),
   currentCount: z.number().int().nonnegative(),
   targetCount: z.number().int().positive(),
-  syntheticCount: z.number().int().nonnegative().max(80),
+  syntheticCount: z.number().int().nonnegative().max(100),
   severity: z.enum(["low", "medium", "high"]),
   accent: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   prompt: z.string().min(30).max(260),
@@ -34,7 +34,7 @@ const qualityReportSchema = z.object({
   repairPlan: z.array(z.string().min(20).max(190)).min(3).max(5),
   completionSummary: z.array(z.string().min(20).max(190)).min(3).max(5),
   nextSteps: z.array(z.string().min(20).max(190)).min(3).max(5),
-  gapJobs: z.array(gapJobSchema).min(1).max(5),
+  gapJobs: z.array(gapJobSchema).min(1).max(10),
 });
 
 type QualityReport = z.infer<typeof qualityReportSchema>;
@@ -42,19 +42,19 @@ type QualityReportRequest = z.infer<typeof requestSchema>;
 
 const fallbackReport: QualityReport = {
   measuredFindings: [
-    "Class distribution is skewed: cats 120, dogs 100, foxes 15, owls 10.",
-    "Coverage score is 35 because low-light wildlife records are almost absent.",
-    "Consistency remains strong at 88, so repair should focus on coverage rather than relabeling.",
+    "Class distribution is skewed: cane 100, cavallo 90, elefante 80, farfalla 70, gallina 60, gatto 50, mucca 40, pecora 30, ragno 25, scoiattolo 20.",
+    "Completeness score is 74 because 22 records are unlabeled and minority animal classes are sparse.",
+    "Consistency is 82 after seeded cross-class mislabels and duplicate bursts are counted.",
   ],
   repairPlan: [
-    "Generate 45 fox records across woodland and suburban edge conditions.",
-    "Generate 40 owl records with perched, flight, frontal, and side-angle compositions.",
-    "Generate 30 low-light wildlife records with infrared glare and plausible motion blur.",
+    "Recover cached Fal AI samples only until each class reaches the 100-image majority cap.",
+    "Apply reviewer-approved missing labels and relabels before balancing metrics are recomputed.",
+    "Remove duplicate export entries while preserving duplicate provenance in the manifest.",
   ],
   completionSummary: [
-    "Post-repair quality increased to 84 after targeted synthetic records were added.",
-    "Balance improved to 78 with foxes and owls lifted near the minimum target count.",
-    "Coverage improved to 81 after adding low-light camera-trap scenarios.",
+    "Post-repair quality increased to 84 after label fixes, dedupe, and bounded Fal AI recovery.",
+    "Balance improved to 78 with each animal capped at exactly 100 total images.",
+    "Completeness improved to 96 after missing labels were added and minority class gaps were filled.",
   ],
   nextSteps: [
     "Keep synthetic records flagged in the manifest for downstream filtering.",
@@ -63,34 +63,94 @@ const fallbackReport: QualityReport = {
   ],
   gapJobs: [
     {
-      className: "Foxes",
-      currentCount: 15,
-      targetCount: 60,
-      syntheticCount: 45,
+      className: "cavallo",
+      currentCount: 90,
+      targetCount: 100,
+      syntheticCount: 10,
+      severity: "medium",
+      accent: "#ffbc42",
+      prompt:
+        "Photorealistic cavallo records for bounded class balancing, varied pasture poses, no text, no watermark.",
+    },
+    {
+      className: "elefante",
+      currentCount: 80,
+      targetCount: 100,
+      syntheticCount: 20,
+      severity: "high",
+      accent: "#52d6ff",
+      prompt:
+        "Photorealistic elefante records across herd, savanna, and portrait contexts, no text, no watermark.",
+    },
+    {
+      className: "farfalla",
+      currentCount: 70,
+      targetCount: 100,
+      syntheticCount: 30,
       severity: "high",
       accent: "#ff5d7d",
       prompt:
-        "Photorealistic foxes in mixed woodland and suburban edges, varied poses, clean labels, no text, no watermark.",
+        "Photorealistic farfalla records with varied wing poses, flowers, and macro detail, no text, no watermark.",
     },
     {
-      className: "Owls",
-      currentCount: 10,
-      targetCount: 50,
+      className: "gallina",
+      currentCount: 60,
+      targetCount: 100,
       syntheticCount: 40,
-      severity: "high",
-      accent: "#af8cff",
-      prompt:
-        "Owls perched and in flight across natural backgrounds, side and frontal angles, realistic feather detail, no overlays.",
-    },
-    {
-      className: "Low-light Wildlife",
-      currentCount: 3,
-      targetCount: 33,
-      syntheticCount: 30,
       severity: "high",
       accent: "#f2f0dc",
       prompt:
-        "Low-light camera-trap wildlife photos with infrared glare, motion blur, night foliage, plausible animal framing.",
+        "Photorealistic gallina records in farmyard and coop scenes, varied side and frontal angles, no overlays.",
+    },
+    {
+      className: "gatto",
+      currentCount: 50,
+      targetCount: 100,
+      syntheticCount: 50,
+      severity: "high",
+      accent: "#af8cff",
+      prompt:
+        "Photorealistic gatto records across indoor and outdoor contexts, clean class framing, no text, no watermark.",
+    },
+    {
+      className: "mucca",
+      currentCount: 40,
+      targetCount: 100,
+      syntheticCount: 60,
+      severity: "high",
+      accent: "#8fd17f",
+      prompt:
+        "Photorealistic mucca records in pasture and dairy contexts, varied poses, no text, no watermark.",
+    },
+    {
+      className: "pecora",
+      currentCount: 30,
+      targetCount: 100,
+      syntheticCount: 70,
+      severity: "high",
+      accent: "#ffe2a8",
+      prompt:
+        "Photorealistic pecora records with flock, wool, and pasture variety, clean labels, no text, no watermark.",
+    },
+    {
+      className: "ragno",
+      currentCount: 25,
+      targetCount: 100,
+      syntheticCount: 75,
+      severity: "high",
+      accent: "#f06c9b",
+      prompt:
+        "Photorealistic ragno macro records with web detail and varied backgrounds, no text, no watermark.",
+    },
+    {
+      className: "scoiattolo",
+      currentCount: 20,
+      targetCount: 100,
+      syntheticCount: 80,
+      severity: "high",
+      accent: "#d99a52",
+      prompt:
+        "Photorealistic scoiattolo records across tree, forest floor, and foraging contexts, no text, no watermark.",
     },
   ],
 };
@@ -116,7 +176,7 @@ export async function POST(request: Request) {
 
   if (!apiKey) {
     return NextResponse.json({
-      ...fallbackReport,
+      ...boundReportToMajorityCap(fallbackReport, parsedRequest.data),
       provider: "demo-openai",
       model: "fallback",
       fallbackReason: "OPENAI_API_KEY is not configured.",
@@ -142,7 +202,10 @@ export async function POST(request: Request) {
       },
     });
 
-    const report = qualityReportSchema.parse(response.output_parsed);
+    const report = boundReportToMajorityCap(
+      qualityReportSchema.parse(response.output_parsed),
+      parsedRequest.data,
+    );
 
     return NextResponse.json({
       ...report,
@@ -154,7 +217,7 @@ export async function POST(request: Request) {
     console.error("OpenAI quality report failed", error);
 
     return NextResponse.json({
-      ...fallbackReport,
+      ...boundReportToMajorityCap(fallbackReport, parsedRequest.data),
       provider: "demo-openai",
       model: "fallback",
       fallbackReason:
@@ -175,7 +238,45 @@ function buildModelInput(input: QualityReportRequest) {
       "The report should distinguish measured evidence from GPT interpretation.",
       "Recommend synthetic samples only for weak classes or missing scenarios.",
       "Use existing class names exactly when possible.",
+      "No synthetic generation job may set a target count above the current majority-class count.",
       "Keep the demo credible: no accuracy claims, no model-training claims.",
     ],
   };
+}
+
+function boundReportToMajorityCap(
+  report: QualityReport,
+  input: QualityReportRequest,
+): QualityReport {
+  const majorityClassCap = getMajorityClassCap(input.classDistribution);
+
+  if (majorityClassCap <= 0) {
+    return report;
+  }
+
+  const boundedGapJobs = report.gapJobs.map((job) => {
+    const currentCount = input.classDistribution[job.className] ?? job.currentCount;
+    const targetCount = Math.min(majorityClassCap, Math.max(currentCount, job.targetCount));
+    const syntheticCount = Math.min(job.syntheticCount, Math.max(0, targetCount - currentCount));
+
+    return {
+      ...job,
+      currentCount,
+      targetCount,
+      syntheticCount,
+    };
+  });
+
+  return {
+    ...report,
+    gapJobs: boundedGapJobs,
+  };
+}
+
+function getMajorityClassCap(distribution: Record<string, number>) {
+  const counts = Object.entries(distribution)
+    .filter(([className]) => className !== "Unlabeled")
+    .map(([, count]) => count);
+
+  return counts.length ? Math.max(...counts) : 0;
 }

@@ -3,10 +3,10 @@
   --df-before: rgba(140, 150, 170, 0.55);
   --df-after: var(--df-accent);
   --df-track-bg: rgba(255, 255, 255, 0.05);
-  --df-text: rgba(232, 236, 244, 0.92);
-  --df-text-dim: rgba(232, 236, 244, 0.55);
-  --df-card-bg: rgba(18, 22, 32, 0.65);
-  --df-card-border: rgba(255, 255, 255, 0.08);
+  --df-text: var(--ink);
+  --df-text-dim: var(--muted);
+  --df-card-bg: var(--panel);
+  --df-card-border: var(--line);
 
   display: flex;
   flex-direction: column;

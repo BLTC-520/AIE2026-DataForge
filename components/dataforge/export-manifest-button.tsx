@@ -1,4 +1,4 @@
-// Triggers a browser download of the JSON export manifest.
+// Triggers browser downloads for the final dataset CSV and report.
 //
 // Brian's stub signature:
 //   { samples, labelIssues, duplicateIssues, balancingPlan,
@@ -19,7 +19,11 @@ import type {
   LabelIssue,
   QualityReport,
 } from "../../lib/dataforge/types";
-import { buildExportManifest, serializeManifest } from "../../lib/dataforge/export";
+import {
+  buildDatasetReportMarkdown,
+  buildExportManifest,
+  buildSamplesCsv,
+} from "../../lib/dataforge/export";
 import styles from "./export-manifest-button.module.css";
 
 export type ExportManifestButtonProps = {
@@ -81,11 +85,17 @@ export function ExportManifestButton({
         finalEvaluation,
         qualityReport,
       });
-      const json = serializeManifest(manifest);
-      const filename = `${slug(datasetName)}-manifest-${stamp()}.json`;
-      triggerDownload(json, filename);
+      const baseName = `${slug(datasetName)}-${stamp()}`;
+      const datasetFilename = `${baseName}-final-dataset.csv`;
+      const reportFilename = `${baseName}-dataforge-report.md`;
+      triggerDownload(buildSamplesCsv(manifest.samples), datasetFilename, "text/csv;charset=utf-8");
+      triggerDownload(
+        buildDatasetReportMarkdown(manifest),
+        reportFilename,
+        "text/markdown;charset=utf-8",
+      );
       setStatus("done");
-      onExported?.(filename);
+      onExported?.(`${datasetFilename} + ${reportFilename}`);
       // Reset back to idle so the user can re-export after further edits.
       window.setTimeout(() => setStatus("idle"), 2000);
     } catch (err) {
@@ -95,14 +105,13 @@ export function ExportManifestButton({
   }
 
   return (
-    <section className={`${styles.root} ${className ?? ""}`} aria-label="Export manifest">
+    <section className={`${styles.root} ${className ?? ""}`} aria-label="Export dataset and report">
       <header className={styles.header}>
         <span className={styles.kicker}>Export</span>
-        <h2 className={styles.title}>Clean labeled dataset manifest</h2>
+        <h2 className={styles.title}>Final dataset and report</h2>
         <p className={styles.subtitle}>
-          JSON manifest with full provenance: original labels, final labels,
-          label decisions, duplicate decisions, balancing recommendations,
-          provider boundary notes, and both Adaption evaluation snapshots.
+          Downloads the clean labeled dataset as CSV plus a Markdown report with
+          quality deltas, provider boundaries, and synthetic-sample provenance.
         </p>
       </header>
 
@@ -155,18 +164,18 @@ export function ExportManifestButton({
 function renderButtonLabel(status: "idle" | "exporting" | "done" | "error"): string {
   switch (status) {
     case "exporting":
-      return "Building manifest…";
+      return "Building dataset…";
     case "done":
-      return "✓ Downloaded";
+      return "Downloaded";
     case "error":
       return "Retry export";
     default:
-      return "↓ Export manifest";
+      return "Export dataset + report";
   }
 }
 
-function triggerDownload(json: string, filename: string): void {
-  const blob = new Blob([json], { type: "application/json" });
+function triggerDownload(contents: string, filename: string, type: string): void {
+  const blob = new Blob([contents], { type });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;

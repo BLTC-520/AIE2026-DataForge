@@ -1,8 +1,8 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
-const stageNames = ["upload", "evaluate", "analyze", "generate", "reevaluate", "export"] as const;
-const stageStatuses = ["queued", "running", "complete", "error"] as const;
+const stageNames = ["normalize", "evaluate", "labelize", "deduplicate", "balance", "repair", "reevaluate", "report", "export"] as const;
+const stageStatuses = ["queued", "running", "complete", "error", "skipped", "degraded"] as const;
 const sourceTypes = ["original", "synthetic"] as const;
 const gapStatuses = ["proposed", "approved", "running", "complete", "error", "rejected"] as const;
 const severityLevels = ["low", "medium", "high"] as const;
@@ -17,7 +17,9 @@ const datasetStatuses = [
   "label_review",
   "analysis_ready",
   "balancing",
+  "repairing",
   "reevaluating",
+  "report_ready",
   "complete",
   "error",
 ] as const;

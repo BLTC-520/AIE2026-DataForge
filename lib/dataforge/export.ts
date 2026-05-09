@@ -70,6 +70,49 @@ export function serializeManifest(manifest: ExportManifest): string {
   return JSON.stringify(manifest, sortedKeysReplacer, 2);
 }
 
+export function buildDatasetReportMarkdown(manifest: ExportManifest): string {
+  const baseline = manifest.baselineEvaluation;
+  const final = manifest.finalEvaluation;
+  const report = manifest.qualityReport;
+
+  return [
+    `# DataForge Export Report`,
+    ``,
+    `Dataset: ${manifest.datasetName}`,
+    `Generated: ${manifest.generatedAt}`,
+    `Training intent: ${manifest.trainingIntent}`,
+    ``,
+    `## Readiness Claim`,
+    String(manifest.metadata?.readinessClaim ?? "Dataset readiness improved. No trained-model accuracy claim is made."),
+    ``,
+    `## Quality Delta`,
+    `- Baseline quality: ${baseline?.qualityScore ?? "n/a"}`,
+    `- Final quality: ${final?.qualityScore ?? "n/a"}`,
+    `- Baseline balance: ${baseline?.balanceScore ?? "n/a"}`,
+    `- Final balance: ${final?.balanceScore ?? "n/a"}`,
+    `- Baseline completeness: ${baseline?.completenessScore ?? "n/a"}`,
+    `- Final completeness: ${final?.completenessScore ?? "n/a"}`,
+    ``,
+    `## Provider Boundaries`,
+    `- Adaption Labs: manifest-level dataset quality evaluation only. It did not inspect image pixels.`,
+    `- OpenAI GPT-5.5: structured repair report and inferred next steps.`,
+    `- Convex: realtime dataset state, pipeline events, review state, and Fal telemetry.`,
+    `- Fal: generated recovery images for measured class gaps, marked synthetic.`,
+    `- Vercel: Next.js app and route-handler deployment surface.`,
+    ``,
+    `## Repair Summary`,
+    ...(report?.recommendedActions.length
+      ? report.recommendedActions.map((action) => `- ${action}`)
+      : [`- No recommended actions were included.`]),
+    ``,
+    `## Export Contents`,
+    `- Final dataset CSV: included samples with final labels and provenance columns.`,
+    `- Report: this Markdown file with metric deltas and sponsor/provider boundaries.`,
+    `- Synthetic samples remain marked as source=synthetic and provider=fal.ai.`,
+    ``,
+  ].join("\n");
+}
+
 /**
  * Build a CSV view of the samples — the "training-ready" flat output.
  * The full provenance lives in the JSON manifest; this CSV is the

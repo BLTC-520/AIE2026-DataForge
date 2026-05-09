@@ -29,7 +29,7 @@
 - **Headline:** Fixing "Animals-10"
 - **Content:**
   - Base: Kaggle Animals-10
-  - Introduced Defects: 90 cats vs. 20 dogs (Imbalance), missing labels, obvious mislabels, and near-duplicates.
+  - Introduced Defects: `cane=100` while `scoiattolo=20`, labels are missing, obvious cross-class mislabels exist, and near-duplicates are present.
 - **Visual:** A grid of animal images with red "X"s over duplicates and wrong labels.
 - **Speaker Notes:** "We took a standard dataset and deliberately broke it to simulate real-world conditions. Watch how DataForge handles it."
 
@@ -48,9 +48,9 @@
   - **OpenAI (GPT-5.5 / Vision):** Visual auditing, reasoning, and structured reporting.
   - **Convex:** Real-time state management and live dashboard updates.
   - **Vercel:** Seamless, high-performance edge deployment.
-  - **Fal AI:** Synthetic data generation for class balancing.
+  - **Fal AI:** Cached generated outputs for bounded class balancing.
 - **Visual:** Simple architecture diagram with sponsor logos at their respective layers.
-- **Speaker Notes:** "We're utilizing best-in-class tools. Adaption handles our manifest evaluations, GPT provides the reasoning layer, Convex gives us a live multiplayer-ready dashboard, Fal AI supplies instant synthetic balancing samples, and it all runs on Vercel."
+- **Speaker Notes:** "We're utilizing best-in-class tools. Adaption handles our manifest evaluations, GPT provides the reasoning layer, Convex gives us a live multiplayer-ready dashboard, React Flow makes the repair loop visible, Fal AI supplies cached generated balancing samples, and it all runs on Vercel."
 
 ## Slide 7: Why It Matters & Next Steps
 - **Headline:** The Future of Data Readiness

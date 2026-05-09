@@ -1,12 +1,14 @@
-export type StageStatus = "queued" | "running" | "complete" | "error";
+export type StageStatus = "queued" | "running" | "complete" | "error" | "skipped" | "degraded";
 
 export type PipelineStageId =
-  | "upload"
+  | "normalize"
   | "evaluate"
   | "labelize"
   | "deduplicate"
   | "balance"
+  | "repair"
   | "reevaluate"
+  | "report"
   | "export";
 
 export type PipelineStage = {

@@ -1,0 +1,152 @@
+.root {
+  width: 100%;
+  height: 355px;
+  min-height: 355px;
+  overflow: hidden;
+  border: 1px solid rgba(242, 240, 220, 0.12);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at 8% 10%, oklch(84% 0.06 228 / 0.5), transparent 18rem),
+    radial-gradient(circle at 88% 82%, oklch(85% 0.08 142 / 0.4), transparent 18rem),
+    oklch(98% 0.01 91);
+}
+
+.root :global(.react-flow__pane) {
+  cursor: default;
+}
+
+.root :global(.react-flow__controls) {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: none;
+}
+
+.root :global(.react-flow__controls-button) {
+  width: 28px;
+  height: 28px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  background: oklch(98% 0.01 91);
+}
+
+.root :global(.react-flow__controls-button:hover) {
+  color: var(--acid);
+  background: rgba(199, 255, 77, 0.08);
+}
+
+.root :global(.react-flow__minimap) {
+  border: 1px solid var(--line);
+  background: oklch(98% 0.01 91 / 0.92);
+}
+
+.node {
+  width: 178px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  background: var(--panel);
+  box-shadow: 4px 4px 0 oklch(87% 0.018 91);
+}
+
+.node :global(.react-flow__handle) {
+  opacity: 0;
+}
+
+.nodeShell {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 86px;
+  padding: 10px;
+  text-align: left;
+}
+
+.nodeIcon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid currentColor;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.nodeCopy {
+  min-width: 0;
+}
+
+.nodeCopy strong,
+.nodeCopy small {
+  display: block;
+}
+
+.nodeCopy strong {
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+
+.nodeCopy small {
+  margin-top: 7px;
+  color: currentColor;
+  font-size: 10px;
+  opacity: 0.72;
+  text-transform: uppercase;
+}
+
+.queued {
+  color: var(--muted);
+}
+
+.running {
+  color: var(--amber);
+  border-color: rgba(255, 188, 66, 0.7);
+  background: linear-gradient(180deg, oklch(91% 0.08 75), var(--panel));
+}
+
+.complete {
+  color: var(--mint);
+  border-color: rgba(84, 240, 180, 0.72);
+  background: linear-gradient(180deg, oklch(92% 0.08 158), var(--panel));
+}
+
+.error {
+  color: var(--rose);
+  border-color: rgba(255, 93, 125, 0.72);
+}
+
+.skipped {
+  color: var(--faint);
+  border-style: dashed;
+}
+
+.degraded {
+  color: var(--cyan);
+  border-color: rgba(82, 214, 255, 0.72);
+  background: linear-gradient(180deg, oklch(92% 0.07 228), var(--panel));
+}
+
+.edgeQueued :global(.react-flow__edge-path),
+.edgeComplete :global(.react-flow__edge-path),
+.edgeRunning :global(.react-flow__edge-path) {
+  stroke-width: 2;
+}
+
+.edgeRunning :global(.react-flow__edge-path) {
+  filter: drop-shadow(0 0 8px rgba(255, 188, 66, 0.54));
+}
+
+.edgeComplete :global(.react-flow__edge-path) {
+  filter: drop-shadow(0 0 7px rgba(84, 240, 180, 0.38));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root :global(.react-flow__edge.animated .react-flow__edge-path) {
+    animation: none;
+  }
+}

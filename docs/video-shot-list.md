@@ -5,7 +5,7 @@
 
 ## Shot 1: The Idle Dashboard (0:00 - 0:05)
 - **Visual:** The DataForge web interface in its initial "empty" state. Clean UI, ready for input.
-- **Action:** Mouse enters frame and hovers over the "Upload ZIP" button.
+- **Action:** Mouse drags a simulated training ZIP over the dropzone.
 
 ## Shot 2: Baseline Quality Evaluation (0:05 - 0:15)
 - **Visual:** The dashboard immediately after simulated upload.
@@ -28,12 +28,12 @@
   - Show the badge update to `Removed`.
 
 ## Shot 5: The Balancing Plan & Fal AI Generation (0:45 - 1:00)
-- **Visual:** The Balancing Panel and Distribution Chart.
+- **Visual:** The distribution chart, Fal telemetry, and generated-image preview gallery.
 - **Action:**
-  - Show the heavily skewed distribution chart (e.g., 90 Cats vs. 20 Dogs).
-  - Click the "Run Fal AI Generation" button.
-  - Show the brief 3-second loader.
-  - Show the new grid of generated images appearing, clearly emphasizing the `✨ Fal AI` / `Synthetic` badges on the new images.
+  - Show the heavily skewed distribution chart, from `cane=100` raw images down to `scoiattolo=20`.
+  - Show the React Flow pipeline reaching the bounded Fal recovery stage.
+  - Show the generated-image grid appearing, clearly emphasizing the `✨ Fal AI` / `Synthetic` badges on the new images.
+  - Show the provider and 100-images-per-animal cap metadata before moving to export.
 
 ## Shot 6: The Quality Delta & Export (1:00 - 1:20)
 - **Visual:** The Quality Report Panel and Export Manifest Button.

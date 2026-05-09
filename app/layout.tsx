@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+// React Flow Basic Setup: https://github.com/xyflow/xyflow/blob/main/packages/react/README.md
+import "@xyflow/react/dist/style.css";
 import "../styles.css";
 import ConvexClientProvider from "../components/convex-provider";
 

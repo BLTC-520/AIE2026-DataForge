@@ -3,8 +3,8 @@ import { action, mutation, query } from "./_generated/server";
 // Convex Document IDs: https://docs.convex.dev/using/document-ids
 import type { Doc, Id } from "./_generated/dataModel";
 
-const STAGE_IDS = ["upload", "evaluate", "analyze", "generate", "reevaluate", "export"] as const;
-const STAGE_STATUSES = ["queued", "running", "complete", "error"] as const;
+const STAGE_IDS = ["normalize", "evaluate", "labelize", "deduplicate", "balance", "repair", "reevaluate", "report", "export"] as const;
+const STAGE_STATUSES = ["queued", "running", "complete", "error", "skipped", "degraded"] as const;
 const DATASET_STATUSES = [
   "uploaded",
   "analyzing",
@@ -12,7 +12,9 @@ const DATASET_STATUSES = [
   "label_review",
   "analysis_ready",
   "balancing",
+  "repairing",
   "reevaluating",
+  "report_ready",
   "complete",
   "error",
 ] as const;
@@ -386,11 +388,11 @@ export const createDemoDataset = mutation({
       await ctx.db.insert("pipeline_stages", {
         datasetId,
         stage,
-        status: stage === "upload" ? "complete" : "queued",
-        message: stage === "upload" ? "Source dataset loaded." : "Waiting in queue.",
-        progress: stage === "upload" ? 100 : 0,
-        startedAt: stage === "upload" ? created : undefined,
-        completedAt: stage === "upload" ? created : undefined,
+        status: stage === "normalize" ? "complete" : "queued",
+        message: stage === "normalize" ? "Source manifest normalized from folder-derived labels." : "Waiting in queue.",
+        progress: stage === "normalize" ? 100 : 0,
+        startedAt: stage === "normalize" ? created : undefined,
+        completedAt: stage === "normalize" ? created : undefined,
         updatedAt: created,
       });
     }
@@ -923,10 +925,13 @@ export const getDashboardState = query({
       stageStatuses: normalizeStageStatuses(stages),
       isPipelineActive:
         dataset.status === "analyzing" ||
+        dataset.status === "evaluated" ||
         dataset.status === "label_review" ||
         dataset.status === "analysis_ready" ||
         dataset.status === "balancing" ||
-        dataset.status === "reevaluating",
+        dataset.status === "repairing" ||
+        dataset.status === "reevaluating" ||
+        dataset.status === "report_ready",
       };
   },
 });
