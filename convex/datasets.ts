@@ -1,5 +1,7 @@
 import { v } from "convex/values";
 import { action, mutation, query } from "./_generated/server";
+// Convex Document IDs: https://docs.convex.dev/using/document-ids
+import type { Doc, Id } from "./_generated/dataModel";
 
 const STAGE_IDS = ["upload", "evaluate", "analyze", "generate", "reevaluate", "export"] as const;
 const STAGE_STATUSES = ["queued", "running", "complete", "error"] as const;
@@ -23,6 +25,14 @@ const SEVERITY_LEVELS = ["low", "medium", "high"] as const;
 const REPAIR_JOB_TYPES = ["generate", "relabel"] as const;
 const RELABEL_DECISIONS = ["pending", "accepted", "rejected", "applied", "requires_review"] as const;
 const FAL_RUN_STATUSES = ["queued", "running", "complete", "error"] as const;
+
+type StageId = (typeof STAGE_IDS)[number];
+type StageStatus = (typeof STAGE_STATUSES)[number];
+type StageStatusMap = Record<StageId, StageStatus>;
+type LabelingStatus = "original" | "candidate" | "reviewed" | "applied";
+type SourceType = (typeof SOURCE_TYPES)[number];
+type GapJobRecord = Omit<Doc<"gap_jobs">, "_id" | "_creationTime">;
+type SampleRecord = Omit<Doc<"samples">, "_id" | "_creationTime">;
 
 const sampleSchema = {
   sampleId: v.string(),
@@ -99,6 +109,27 @@ function parseSeverity(value: unknown) {
   return value === "low" || value === "medium" || value === "high" ? value : undefined;
 }
 
+function parseLabelingStatus(value: unknown): LabelingStatus | undefined {
+  return value === "original" ||
+    value === "candidate" ||
+    value === "reviewed" ||
+    value === "applied"
+    ? value
+    : undefined;
+}
+
+function parseSourceType(value: unknown): SourceType {
+  return value === "synthetic" ? "synthetic" : "original";
+}
+
+function parseGapJobId(value: unknown): Id<"gap_jobs"> | undefined {
+  return typeof value === "string" ? value as Id<"gap_jobs"> : undefined;
+}
+
+function parseSampleId(value: unknown): Id<"samples"> | undefined {
+  return typeof value === "string" ? value as Id<"samples"> : undefined;
+}
+
 function normalizeToInteger(value: unknown, fallback: number) {
   return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.round(value)) : fallback;
 }
@@ -109,7 +140,7 @@ function normalizeToRatio(value: unknown, fallback: number) {
     : fallback;
 }
 
-function normalizeRepairJob(datasetId: any, value: Record<string, unknown>) {
+function normalizeRepairJob(datasetId: Id<"datasets">, value: Record<string, unknown>): GapJobRecord {
   const nowTimestamp = now();
   const status = parseGapStatus(value.status);
 
@@ -141,7 +172,7 @@ function normalizeRepairJob(datasetId: any, value: Record<string, unknown>) {
     status,
     falJobId: typeof value.falJobId === "string" ? value.falJobId : undefined,
     imagesGenerated,
-    sampleId: typeof value.sampleId === "string" ? value.sampleId : undefined,
+    sampleId: parseSampleId(value.sampleId),
     fromClassName:
       typeof value.fromClassName === "string" ? value.fromClassName : undefined,
     toClassName: typeof value.toClassName === "string" ? value.toClassName : undefined,
@@ -159,9 +190,9 @@ function normalizeRepairJob(datasetId: any, value: Record<string, unknown>) {
   };
 }
 
-function normalizeSampleRecord(datasetId: any, value: Record<string, unknown>) {
+function normalizeSampleRecord(datasetId: Id<"datasets">, value: Record<string, unknown>): SampleRecord {
   const nowTimestamp = now();
-  const source = value.source === "original" || value.source === "synthetic" ? value.source : "original";
+  const source = parseSourceType(value.source);
   const status = typeof value.status === "string" ? value.status : "received";
 
   return {
@@ -179,15 +210,8 @@ function normalizeSampleRecord(datasetId: any, value: Record<string, unknown>) {
       typeof value.labelConfidence === "number" && Number.isFinite(value.labelConfidence)
         ? normalizeToRatio(value.labelConfidence, 0)
         : undefined,
-    labelingStatus:
-      value.labelingStatus === "original" ||
-      value.labelingStatus === "candidate" ||
-      value.labelingStatus === "reviewed" ||
-      value.labelingStatus === "applied"
-        ? value.labelingStatus
-        : undefined,
-    relabelSourceJobId:
-      typeof value.relabelSourceJobId === "string" ? value.relabelSourceJobId : undefined,
+    labelingStatus: parseLabelingStatus(value.labelingStatus),
+    relabelSourceJobId: parseGapJobId(value.relabelSourceJobId),
     relabelReason: typeof value.relabelReason === "string" ? value.relabelReason : undefined,
     reviewedAt:
       typeof value.reviewedAt === "number" && Number.isFinite(value.reviewedAt)
@@ -215,10 +239,10 @@ function resolveLabelingStatusFromDecision(decision: (typeof RELABEL_DECISIONS)[
 }
 
 async function applyRelabelDecisionToSample(ctx: any, job: any, reviewedAt: number, decision: (typeof RELABEL_DECISIONS)[number]) {
-  const sampleId = job.sampleId;
+  const sampleId = parseSampleId(job.sampleId);
   const toClassName = job.toClassName;
 
-  if (typeof sampleId !== "string" || typeof toClassName !== "string") {
+  if (!sampleId || typeof toClassName !== "string") {
     return;
   }
 
@@ -266,6 +290,14 @@ function now() {
   return Date.now();
 }
 
+function isStageId(value: string): value is StageId {
+  return (STAGE_IDS as readonly string[]).includes(value);
+}
+
+function isStageStatus(value: string): value is StageStatus {
+  return (STAGE_STATUSES as readonly string[]).includes(value);
+}
+
 async function upsertByVersion(
   ctx: any,
   datasetId: any,
@@ -308,11 +340,13 @@ async function upsertByVersion(
   await ctx.db.insert("evaluation_snapshots", record);
 }
 
-function normalizeStageStatuses(stages: Array<{ stage: string; status: string }>) {
-  const map = Object.fromEntries(STAGE_IDS.map((stage) => [stage, "queued" as const]));
+function normalizeStageStatuses(stages: Array<{ stage: string; status: string }>): StageStatusMap {
+  const map = Object.fromEntries(STAGE_IDS.map((stage) => [stage, "queued"])) as StageStatusMap;
 
   for (const stage of stages) {
-    map[stage.stage] = stage.status as (typeof STAGE_STATUSES)[number];
+    if (isStageId(stage.stage) && isStageStatus(stage.status)) {
+      map[stage.stage] = stage.status;
+    }
   }
 
   return map;

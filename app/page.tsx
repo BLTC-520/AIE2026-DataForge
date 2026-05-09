@@ -3,6 +3,8 @@
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
+// Convex Document IDs: https://docs.convex.dev/using/document-ids
+import type { Id } from "../convex/_generated/dataModel";
 
 type StageStatus = "queued" | "running" | "complete" | "error";
 type SourceType = "original" | "synthetic";
@@ -56,6 +58,15 @@ type PersistedGapJob = {
   confidence?: number;
   reasoning?: string;
   decision?: "pending" | "accepted" | "rejected" | "applied" | "requires_review";
+};
+
+type PersistedRelabelJob = PersistedGapJob & {
+  type: "relabel";
+  sampleId: string;
+  fromClassName: string;
+  toClassName: string;
+  reviewedAt?: number;
+  reviewer?: string;
 };
 
 type RelabelJob = {
@@ -264,7 +275,7 @@ export default function Home() {
   const [trainingIntent, setTrainingIntent] = useState(
     "Train an animal image classifier that works across common pets and wildlife, including low-light camera-trap photos.",
   );
-  const [activeDatasetId, setActiveDatasetId] = useState<string | null>(null);
+  const [activeDatasetId, setActiveDatasetId] = useState<Id<"datasets"> | null>(null);
   const [datasetLoaded, setDatasetLoaded] = useState(false);
   const [analysisRunning, setAnalysisRunning] = useState(false);
   const [analysisComplete, setAnalysisComplete] = useState(false);
@@ -504,7 +515,7 @@ export default function Home() {
       })),
     };
 
-    let createdDatasetId: string | null = null;
+    let createdDatasetId: Id<"datasets"> | null = null;
 
     try {
       const result = await createDemoDataset(datasetPayload);
@@ -1638,8 +1649,8 @@ function mapDashboardQualityReport(
 ): { report: QualityReport; hasData: boolean } {
   const persistedGapJobs = normalizeGapJobs(gapJobs);
   const fallbackCopy = buildClientFallbackReport();
+  const valueAsRecord: Record<string, unknown> = isRecord(value) ? value : {};
 
-  const valueAsRecord = value as Record<string, unknown>;
   const parseMeasuredFindings = normalizeStringList(valueAsRecord?.measuredFindings, []);
   const parseRepairPlan = normalizeStringList(valueAsRecord?.repairPlan, []);
   const parseCompletionSummary = normalizeStringList(valueAsRecord?.completionSummary, []);
@@ -1671,10 +1682,13 @@ function mapDashboardQualityReport(
 
   return {
     report: {
-      provider: value.provider === "openai" ? "openai" : "demo-openai",
-      model: typeof value.model === "string" ? value.model : "fallback",
-      responseId: typeof value.responseId === "string" ? value.responseId : undefined,
-      fallbackReason: typeof value.fallbackReason === "string" ? value.fallbackReason : undefined,
+      provider: valueAsRecord.provider === "openai" ? "openai" : "demo-openai",
+      model: typeof valueAsRecord.model === "string" ? valueAsRecord.model : "fallback",
+      responseId: typeof valueAsRecord.responseId === "string" ? valueAsRecord.responseId : undefined,
+      fallbackReason:
+        typeof valueAsRecord.fallbackReason === "string"
+          ? valueAsRecord.fallbackReason
+          : undefined,
       measuredFindings,
       repairPlan,
       completionSummary,
@@ -1685,7 +1699,7 @@ function mapDashboardQualityReport(
   };
 }
 
-function parseRelabelDecision(value: unknown): RelabelJob["decision"] {
+function parseRelabelDecision(value: unknown): RelabelJob["decision"] | undefined {
   return value === "accepted" ||
     value === "applied" ||
     value === "rejected" ||
@@ -1701,7 +1715,7 @@ function normalizeRelabelJobs(value: unknown): RelabelJob[] {
   }
 
   return value
-    .filter((job): job is PersistedGapJob => {
+    .filter((job): job is PersistedRelabelJob => {
       if (!isRecord(job)) return false;
 
       if (job.type !== "relabel") return false;
@@ -1713,7 +1727,7 @@ function normalizeRelabelJobs(value: unknown): RelabelJob[] {
     })
     .map((job) => {
       return {
-        id: typeof job.sampleId === "string" ? job.sampleId : `relabel-${Math.random().toString(16).slice(2)}`,
+        id: job.sampleId,
         sampleId: job.sampleId,
         fromClassName: job.fromClassName,
         toClassName: job.toClassName,
