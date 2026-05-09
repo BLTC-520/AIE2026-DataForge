@@ -85,6 +85,10 @@ Recommended demo dataset:
   - **Action:** Include duplicate and balancing fields: `duplicateOf`, `duplicateStatus`, `classWeight`, `samplingStrategy`, and optional provenance for generated or externally added samples.
   - **Constraint:** Types should support the demo without requiring Convex, Fal, OpenAI, or Adaption Labs keys.
 
+- [x] **Step 1.2.1: Fix next-env and add Convex dev script**
+  - **Action:** Update `package.json` to add `dev:with-convex` script that runs convex dev concurrently with next dev.
+  - **Action:** Fix `next-env.d.ts` reference path for Next.js routes.
+
 - [ ] **Step 1.3: Create deterministic demo seed (`lib/dataforge/demo-data.ts`)**
   - **Action:** Move class distributions, baseline metrics, final metrics, stage definitions, and seeded animal samples into this file.
   - **Action:** Use Kaggle Animals-10 (`alessiocorrado99/animals10`) as the base dataset if download access is available, then create a curated demo subset rather than using the full dataset raw.
