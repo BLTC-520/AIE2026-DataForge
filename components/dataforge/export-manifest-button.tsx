@@ -20,6 +20,7 @@ import type {
   QualityReport,
 } from "../../lib/dataforge/types";
 import { buildExportManifest, serializeManifest } from "../../lib/dataforge/export";
+import { buildCleanDatasetZip } from "../../lib/dataforge/export-zip";
 import styles from "./export-manifest-button.module.css";
 
 export type ExportManifestButtonProps = {
@@ -34,6 +35,13 @@ export type ExportManifestButtonProps = {
   datasetName?: string;
   /** Training intent text — flows into the manifest header. */
   trainingIntent?: string;
+  /**
+   * Optional sampleKey → Blob map. When supplied, the export produces a
+   * ZIP containing the cleaned images organized by finalLabel (plus
+   * manifest.json, labels.csv, README.md). When omitted (e.g. seeded demo),
+   * the export falls back to a JSON-only manifest download.
+   */
+  imageBlobs?: Map<string, Blob>;
   /** Disable the button (e.g. before analysis completes). */
   disabled?: boolean;
   /** Optional CSS class hook for placement-specific styling. */
@@ -52,6 +60,7 @@ export function ExportManifestButton({
   qualityReport,
   datasetName = "dataforge-clean-dataset",
   trainingIntent = "",
+  imageBlobs,
   disabled,
   className,
   onExported,
@@ -63,6 +72,7 @@ export function ExportManifestButton({
 
   const includedCount = samples.filter((s) => s.duplicateStatus !== "removed").length;
   const removedCount = samples.length - includedCount;
+  const willBundleImages = Boolean(imageBlobs && imageBlobs.size > 0);
 
   async function handleExport() {
     if (disabled || status === "exporting") return;
@@ -70,22 +80,43 @@ export function ExportManifestButton({
     setErrorMessage(null);
 
     try {
-      const manifest = buildExportManifest({
-        datasetName,
-        trainingIntent,
-        samples,
-        labelIssues,
-        duplicateIssues,
-        balancingPlan,
-        baselineEvaluation,
-        finalEvaluation,
-        qualityReport,
-      });
-      const json = serializeManifest(manifest);
-      const filename = `${slug(datasetName)}-manifest-${stamp()}.json`;
-      triggerDownload(json, filename);
-      setStatus("done");
-      onExported?.(filename);
+      if (willBundleImages && imageBlobs) {
+        // ── Real-data path: produce a ZIP with cleaned images + manifest ──
+        const result = await buildCleanDatasetZip({
+          datasetName,
+          trainingIntent,
+          samples,
+          labelIssues,
+          duplicateIssues,
+          balancingPlan,
+          baselineEvaluation,
+          finalEvaluation,
+          qualityReport,
+          imageBlobs,
+        });
+        const filename = `${slug(datasetName)}-${stamp()}.zip`;
+        triggerBlobDownload(result.blob, filename);
+        setStatus("done");
+        onExported?.(filename);
+      } else {
+        // ── Seeded-demo fallback: JSON-only manifest (no real image bytes) ──
+        const manifest = buildExportManifest({
+          datasetName,
+          trainingIntent,
+          samples,
+          labelIssues,
+          duplicateIssues,
+          balancingPlan,
+          baselineEvaluation,
+          finalEvaluation,
+          qualityReport,
+        });
+        const json = serializeManifest(manifest);
+        const filename = `${slug(datasetName)}-manifest-${stamp()}.json`;
+        triggerJsonDownload(json, filename);
+        setStatus("done");
+        onExported?.(filename);
+      }
       // Reset back to idle so the user can re-export after further edits.
       window.setTimeout(() => setStatus("idle"), 2000);
     } catch (err) {
@@ -98,11 +129,15 @@ export function ExportManifestButton({
     <section className={`${styles.root} ${className ?? ""}`} aria-label="Export manifest">
       <header className={styles.header}>
         <span className={styles.kicker}>Export</span>
-        <h2 className={styles.title}>Clean labeled dataset manifest</h2>
+        <h2 className={styles.title}>
+          {willBundleImages
+            ? "Clean labeled dataset (ZIP with images)"
+            : "Clean labeled dataset manifest"}
+        </h2>
         <p className={styles.subtitle}>
-          JSON manifest with full provenance: original labels, final labels,
-          label decisions, duplicate decisions, balancing recommendations,
-          provider boundary notes, and both Adaption evaluation snapshots.
+          {willBundleImages
+            ? "ZIP with cleaned images organized by final label, plus manifest.json (full provenance), labels.csv (flat training-ready labels), and a README explaining the structure."
+            : "JSON manifest with full provenance: original labels, final labels, label decisions, duplicate decisions, balancing recommendations, provider boundary notes, and both Adaption evaluation snapshots."}
         </p>
       </header>
 
@@ -155,18 +190,21 @@ export function ExportManifestButton({
 function renderButtonLabel(status: "idle" | "exporting" | "done" | "error"): string {
   switch (status) {
     case "exporting":
-      return "Building manifest…";
+      return "Building dataset…";
     case "done":
       return "✓ Downloaded";
     case "error":
       return "Retry export";
     default:
-      return "↓ Export manifest";
+      return "↓ Export clean dataset";
   }
 }
 
-function triggerDownload(json: string, filename: string): void {
-  const blob = new Blob([json], { type: "application/json" });
+function triggerJsonDownload(json: string, filename: string): void {
+  triggerBlobDownload(new Blob([json], { type: "application/json" }), filename);
+}
+
+function triggerBlobDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;

@@ -254,7 +254,7 @@ export const demoQualityReport: QualityReport = {
   summary:
     "The baseline dataset is usable but not training-ready: missing labels, cat/dog/fox/owl label mistakes, duplicate bursts, and low-light wildlife gaps will bias a classifier before training starts.",
   provider: "demo-openai",
-  model: "gpt-5.5-demo-fallback",
+  model: "gpt-4o",
   measuredMetrics: demoBaselineMetrics,
   baselineEvaluation: demoBaselineEvaluation,
   finalEvaluation: demoFinalEvaluation,

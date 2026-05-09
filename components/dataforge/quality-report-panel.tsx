@@ -5,7 +5,7 @@
 //   - Inferred  → GPT-5.5's structured analysis (gaps, recommendations).
 //
 // Per PLAN.md Step 3.4, every metric must be labeled with its source:
-//   - "Adaption" — from AdaptionEvaluationSnapshot (manifest-level)
+//   - "GPT"      — from /api/evaluate-dataset (OpenAI Responses API)
 //   - "Local"    — deterministic locally computed
 //   - "Seeded"   — pre-baked demo fixture
 //   - "Vision"   — GPT Vision/Gemini estimate (e.g. label suggestions)
@@ -35,7 +35,7 @@ export type QualityReportPanelProps = {
   finalMetrics?: DatasetMetrics;
 };
 
-type SourceTag = "Adaption" | "Local" | "Seeded" | "Vision";
+type SourceTag = "GPT" | "Local" | "Seeded" | "Vision";
 
 export function QualityReportPanel({
   baselineEvaluation,
@@ -51,10 +51,10 @@ export function QualityReportPanel({
     finalMetrics ? { evaluation: finalEvaluation, metrics: finalMetrics } : null,
   );
 
-  const adaptionProvider = finalEvaluation.provider;
+  const evaluatorProvider = finalEvaluation.provider;
   const reportProvider = qualityReport.provider;
-  const isAdaptionMock =
-    adaptionProvider === "demo-adaption" || adaptionProvider.toString().startsWith("demo-");
+  const isMockEvaluator =
+    evaluatorProvider === "demo-adaption" || evaluatorProvider.toString().startsWith("demo-");
 
   return (
     <section className={styles.root} aria-label="Quality report">
@@ -62,10 +62,10 @@ export function QualityReportPanel({
         <span className={styles.kicker}>Quality report</span>
         <h2 className={styles.title}>Measured gaps, inferred fixes</h2>
         <p className={styles.subtitle}>
-          Every metric is labeled with its source. Adaption Labs scores the
-          manifest only — it does not inspect image pixels. Visual findings
-          come from seeded demo truth or a vision-capable model elsewhere in
-          the pipeline.
+          Every metric is labeled with its source. The GPT evaluator scores
+          the manifest — it does not inspect image pixels. Visual findings
+          come from seeded demo truth or a vision-capable model elsewhere
+          in the pipeline.
         </p>
       </header>
 
@@ -74,14 +74,13 @@ export function QualityReportPanel({
       )}
 
       <div className={styles.grid}>
-        {/* MEASURED — Adaption manifest scores + deterministic locals */}
+        {/* MEASURED — GPT evaluator scores + deterministic locals */}
         <article className={`${styles.card} ${styles.measured}`} aria-labelledby="qr-measured">
           <div className={styles.cardKicker}>
             <span>Measured</span>
             <small>
-              Adaption ({adaptionProvider}
-              {isAdaptionMock ? ", manifest-only fallback" : ", manifest-level"})
-              {" "}+ deterministic local
+              GPT evaluator ({evaluatorProvider}
+              {isMockEvaluator ? ", seeded fallback" : ""})
             </small>
           </div>
           <h3 id="qr-measured" className={styles.cardTitle}>
@@ -95,37 +94,29 @@ export function QualityReportPanel({
                 <small>{formatVersion(baselineEvaluation.version)}</small>
               </header>
               <ul className={styles.scoreList}>
+                {/* Score rows always tag source as Adaption — no Local fallback.
+                    Undefined values render as "—" so it's visible when the
+                    Adaption call hasn't returned (or doesn't include this
+                    metric) instead of silently substituting a local proxy. */}
                 <ScoreRow
                   label="Quality"
                   value={baselineEvaluation.qualityScore ?? null}
-                  source="Adaption"
+                  source="GPT"
                 />
                 <ScoreRow
                   label="Balance"
-                  value={
-                    baselineEvaluation.balanceScore ?? baselineMetrics?.balanceScore ?? null
-                  }
-                  source={
-                    baselineEvaluation.balanceScore !== undefined ? "Adaption" : "Local"
-                  }
+                  value={baselineEvaluation.balanceScore ?? null}
+                  source="GPT"
                 />
                 <ScoreRow
                   label="Completeness"
-                  value={
-                    baselineEvaluation.completenessScore ??
-                    baselineMetrics?.completenessScore ??
-                    null
-                  }
-                  source={
-                    baselineEvaluation.completenessScore !== undefined
-                      ? "Adaption"
-                      : "Local"
-                  }
+                  value={baselineEvaluation.completenessScore ?? null}
+                  source="GPT"
                 />
                 <ScoreRow
                   label="Consistency"
                   value={baselineEvaluation.consistencyScore ?? null}
-                  source="Adaption"
+                  source="GPT"
                 />
               </ul>
             </div>
@@ -139,32 +130,22 @@ export function QualityReportPanel({
                 <ScoreRow
                   label="Quality"
                   value={finalEvaluation.qualityScore ?? null}
-                  source="Adaption"
+                  source="GPT"
                 />
                 <ScoreRow
                   label="Balance"
-                  value={
-                    finalEvaluation.balanceScore ?? finalMetrics?.balanceScore ?? null
-                  }
-                  source={
-                    finalEvaluation.balanceScore !== undefined ? "Adaption" : "Local"
-                  }
+                  value={finalEvaluation.balanceScore ?? null}
+                  source="GPT"
                 />
                 <ScoreRow
                   label="Completeness"
-                  value={
-                    finalEvaluation.completenessScore ??
-                    finalMetrics?.completenessScore ??
-                    null
-                  }
-                  source={
-                    finalEvaluation.completenessScore !== undefined ? "Adaption" : "Local"
-                  }
+                  value={finalEvaluation.completenessScore ?? null}
+                  source="GPT"
                 />
                 <ScoreRow
                   label="Consistency"
                   value={finalEvaluation.consistencyScore ?? null}
-                  source="Adaption"
+                  source="GPT"
                 />
               </ul>
             </div>
@@ -208,14 +189,14 @@ export function QualityReportPanel({
           ) : null}
         </article>
 
-        {/* INFERRED — GPT-5.5 explanation, gaps, recommendations */}
+        {/* INFERRED — GPT explanation, gaps, recommendations */}
         <article className={`${styles.card} ${styles.inferred}`} aria-labelledby="qr-inferred">
           <div className={styles.cardKicker}>
             <span>Inferred</span>
             <small>Source: {reportProvider} · {qualityReport.model}</small>
           </div>
           <h3 id="qr-inferred" className={styles.cardTitle}>
-            GPT-5.5 repair plan
+            {formatModelLabel(qualityReport.model)} repair plan
           </h3>
 
           <p className={styles.summary}>{qualityReport.summary}</p>
@@ -390,7 +371,7 @@ function SourceBadge({ source, compact }: { source: SourceTag; compact?: boolean
 }
 
 const SOURCE_TOOLTIPS: Record<SourceTag, string> = {
-  Adaption: "Provider score from Adaption Labs (manifest-level evaluation, not image-pixel inspection)",
+  GPT: "OpenAI Responses API — manifest-level scoring. Does not inspect image pixels.",
   Local: "Deterministic local computation (no provider call)",
   Seeded: "Pre-baked demo fixture used for repeatable presentations",
   Vision: "GPT Vision / Gemini visual audit estimate",
@@ -399,6 +380,27 @@ const SOURCE_TOOLTIPS: Record<SourceTag, string> = {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Pretty-print an OpenAI model id for the panel heading.
+ *   "gpt-4o"               → "GPT-4o"
+ *   "gpt-4o-mini"          → "GPT-4o-mini"
+ *   "gpt-4.1"              → "GPT-4.1"
+ *   "deterministic-local"  → "Local"
+ *   "client-fallback"      → "Local"
+ *   "idle"                 → ""  (panel just says "repair plan")
+ *   anything else          → uppercased verbatim
+ */
+function formatModelLabel(model: string): string {
+  if (!model) return "GPT";
+  const lower = model.toLowerCase();
+  if (lower === "deterministic-local" || lower === "client-fallback") return "Local";
+  if (lower === "idle") return "";
+  if (lower.startsWith("gpt-")) {
+    return "GPT-" + model.slice(4);
+  }
+  return model.toUpperCase();
+}
 
 function formatVersion(version: string): string {
   // baseline → "Original"; balanced → "After repair"; etc.

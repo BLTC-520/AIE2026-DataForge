@@ -23,7 +23,9 @@ const gapJobSchema = z.object({
   className: z.string().min(2).max(48),
   currentCount: z.number().int().nonnegative(),
   targetCount: z.number().int().positive(),
-  syntheticCount: z.number().int().nonnegative().max(80),
+  // Raised to 500 — client-side balancing flow may override syntheticCount
+  // to the full deficit between a class and the dataset's max class count.
+  syntheticCount: z.number().int().nonnegative().max(500),
   severity: z.enum(["low", "medium", "high"]),
   accent: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   prompt: z.string().min(30).max(260),
@@ -37,63 +39,7 @@ const qualityReportSchema = z.object({
   gapJobs: z.array(gapJobSchema).min(1).max(5),
 });
 
-type QualityReport = z.infer<typeof qualityReportSchema>;
 type QualityReportRequest = z.infer<typeof requestSchema>;
-
-const fallbackReport: QualityReport = {
-  measuredFindings: [
-    "Class distribution is skewed: cats 120, dogs 100, foxes 15, owls 10.",
-    "Coverage score is 35 because low-light wildlife records are almost absent.",
-    "Consistency remains strong at 88, so repair should focus on coverage rather than relabeling.",
-  ],
-  repairPlan: [
-    "Generate 45 fox records across woodland and suburban edge conditions.",
-    "Generate 40 owl records with perched, flight, frontal, and side-angle compositions.",
-    "Generate 30 low-light wildlife records with infrared glare and plausible motion blur.",
-  ],
-  completionSummary: [
-    "Post-repair quality increased to 84 after targeted synthetic records were added.",
-    "Balance improved to 78 with foxes and owls lifted near the minimum target count.",
-    "Coverage improved to 81 after adding low-light camera-trap scenarios.",
-  ],
-  nextSteps: [
-    "Keep synthetic records flagged in the manifest for downstream filtering.",
-    "Review remaining pet-to-wildlife imbalance before a larger training run.",
-    "Export the augmented dataset with both evaluation snapshots as proof of improvement.",
-  ],
-  gapJobs: [
-    {
-      className: "Foxes",
-      currentCount: 15,
-      targetCount: 60,
-      syntheticCount: 45,
-      severity: "high",
-      accent: "#ff5d7d",
-      prompt:
-        "Photorealistic foxes in mixed woodland and suburban edges, varied poses, clean labels, no text, no watermark.",
-    },
-    {
-      className: "Owls",
-      currentCount: 10,
-      targetCount: 50,
-      syntheticCount: 40,
-      severity: "high",
-      accent: "#af8cff",
-      prompt:
-        "Owls perched and in flight across natural backgrounds, side and frontal angles, realistic feather detail, no overlays.",
-    },
-    {
-      className: "Low-light Wildlife",
-      currentCount: 3,
-      targetCount: 33,
-      syntheticCount: 30,
-      severity: "high",
-      accent: "#f2f0dc",
-      prompt:
-        "Low-light camera-trap wildlife photos with infrared glare, motion blur, night foliage, plausible animal framing.",
-    },
-  ],
-};
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -102,25 +48,29 @@ export async function POST(request: Request) {
   if (!parsedRequest.success) {
     return NextResponse.json(
       {
-        ...fallbackReport,
-        provider: "demo-openai",
-        model: "fallback",
-        fallbackReason: "Invalid quality-report request payload.",
+        error: "Invalid quality-report request payload.",
+        details: parsedRequest.error.flatten(),
       },
       { status: 400 },
     );
   }
 
   const apiKey = process.env.OPENAI_API_KEY;
-  const model = process.env.OPENAI_MODEL || "gpt-5.5";
+  // Default to a real, currently-available OpenAI model. The previous default
+  // ("gpt-5.5") is not a valid model ID and made every analyze run fail at
+  // the OpenAI call. Override with OPENAI_MODEL in .env.local.
+  const model = process.env.OPENAI_MODEL || "gpt-4o";
 
   if (!apiKey) {
-    return NextResponse.json({
-      ...fallbackReport,
-      provider: "demo-openai",
-      model: "fallback",
-      fallbackReason: "OPENAI_API_KEY is not configured.",
-    });
+    // No fallback. The cockpit needs to surface this so the user can fix it.
+    return NextResponse.json(
+      {
+        error: "OPENAI_API_KEY is not configured.",
+        hint:
+          "Set OPENAI_API_KEY in .env.local and restart the dev server. The analyze stage requires a real GPT call — there is no demo fallback.",
+      },
+      { status: 500 },
+    );
   }
 
   try {
@@ -132,13 +82,17 @@ export async function POST(request: Request) {
         "Generate a concise structured repair report for an image-classification dataset.",
         "Use only the supplied metrics as measured facts. Do not fabricate new objective scores.",
         "Tie every synthetic generation job to a measured class, count, or scenario gap.",
-        "Synthetic prompts must be practical Fal image prompts: no text overlays, no watermarks, plausible visual diversity.",
+        "Synthetic prompts must produce a SINGLE photorealistic photograph of ONE subject in ONE scene.",
+        "Each prompt MUST avoid words that imply multiple framings or grid output: do NOT use 'collection', 'set of', 'series', 'multiple', 'various', 'examples of', 'grid', 'panels', 'composite', 'collage', 'mosaic', 'side by side', 'multiple poses', 'different angles'.",
+        "Each prompt MUST specify ONE concrete pose, ONE camera angle, and ONE lighting condition (e.g. 'standing in profile, side view, golden-hour daylight').",
+        "Each prompt MUST end with the literal string ', single photo, no text, no watermark'.",
         "Return only the structured output requested by the schema.",
       ].join("\n"),
       input: JSON.stringify(buildModelInput(parsedRequest.data), null, 2),
       text: {
         format: zodTextFormat(qualityReportSchema, "dataforge_quality_report"),
-        verbosity: "low",
+        // verbosity intentionally omitted — gpt-4o only supports "medium",
+        // older models accept "low". Letting it default works across both.
       },
     });
 
@@ -152,14 +106,17 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("OpenAI quality report failed", error);
-
-    return NextResponse.json({
-      ...fallbackReport,
-      provider: "demo-openai",
-      model: "fallback",
-      fallbackReason:
-        error instanceof Error ? `OpenAI request failed: ${error.message}` : "OpenAI request failed.",
-    });
+    const message =
+      error instanceof Error ? error.message : "OpenAI request failed.";
+    return NextResponse.json(
+      {
+        error: `OpenAI quality report failed: ${message}`,
+        message,
+        hint:
+          "Check that OPENAI_API_KEY is valid and that OPENAI_MODEL (defaulted to gpt-4o) supports the Responses API with structured output.",
+      },
+      { status: 502 },
+    );
   }
 }
 

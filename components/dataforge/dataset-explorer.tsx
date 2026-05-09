@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+const PAGE_SIZE = 10;
 
 import type {
   DatasetSample,
@@ -120,6 +122,7 @@ export default function DatasetExplorer({ samples, labelIssues = [], duplicateIs
   const [classFilter, setClassFilter] = useState<string>("all");
   const [sourceFilter, setSourceFilter] = useState<SampleSource | "all">("all");
   const [labelStatusFilter, setLabelStatusFilter] = useState<LabelStatusFilter>("all");
+  const [page, setPage] = useState(1);
 
   const classes = useMemo(() => buildAvailableClasses(samples), [samples]);
 
@@ -186,6 +189,20 @@ export default function DatasetExplorer({ samples, labelIssues = [], duplicateIs
 
     return filtered;
   }, [rows, classFilter, sourceFilter, labelStatusFilter]);
+
+  // Reset to page 1 whenever filters change so the user always sees the
+  // first page of the new result set.
+  useEffect(() => {
+    setPage(1);
+  }, [classFilter, sourceFilter, labelStatusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
+  // Clamp on render in case the result set shrank below the current page.
+  const safePage = Math.min(page, totalPages);
+  const pageStart = (safePage - 1) * PAGE_SIZE;
+  const pagedRows = filteredRows.slice(pageStart, pageStart + PAGE_SIZE);
+  const rangeStart = filteredRows.length === 0 ? 0 : pageStart + 1;
+  const rangeEnd = pageStart + pagedRows.length;
 
   return (
     <section className={styles.panel}>
@@ -260,7 +277,7 @@ export default function DatasetExplorer({ samples, labelIssues = [], duplicateIs
                 </td>
               </tr>
             ) : (
-              filteredRows.map(({ sample, labels, reason, badges }) => {
+              pagedRows.map(({ sample, labels, reason, badges }) => {
                 return (
                   <tr key={sampleKey(sample)}>
                     <td>
@@ -296,6 +313,35 @@ export default function DatasetExplorer({ samples, labelIssues = [], duplicateIs
           </tbody>
         </table>
       </div>
+
+      {filteredRows.length > 0 ? (
+        <nav className={styles.pager} aria-label="Dataset explorer pagination">
+          <span className={styles.pagerRange}>
+            Showing {rangeStart}–{rangeEnd} of {filteredRows.length}
+          </span>
+          <div className={styles.pagerControls}>
+            <button
+              type="button"
+              className={styles.pagerButton}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={safePage <= 1}
+            >
+              ← Prev
+            </button>
+            <span className={styles.pagerPage}>
+              Page {safePage} of {totalPages}
+            </span>
+            <button
+              type="button"
+              className={styles.pagerButton}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={safePage >= totalPages}
+            >
+              Next →
+            </button>
+          </div>
+        </nav>
+      ) : null}
     </section>
   );
 }

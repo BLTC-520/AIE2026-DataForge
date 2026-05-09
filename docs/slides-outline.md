@@ -1,61 +1,154 @@
-# DataForge: Slides Outline
+# DataForge Slide Outline
 
-## Slide 1: Title Slide
-- **Headline:** DataForge
-- **Sub-headline:** The closed-loop dataset repair cockpit.
-- **Visual:** Clean, modern logo or a subtle abstract data visualization.
-- **Speaker Notes:** "Welcome. We're presenting DataForge, a tool designed not for training models, but for fixing the data *before* training ever begins."
+Seven slides. Each slide carries one idea. Total speaking time ~3 minutes
+including the live demo cue.
 
-## Slide 2: The Data Quality Problem
-- **Headline:** Garbage In, Garbage Out
-- **Points:**
-  - Imbalanced classes bias model predictions.
-  - Missing labels waste usable data.
-  - Wrong labels actively teach the model incorrect associations.
-  - Duplicates leak validation data into training.
-- **Visual:** Diagram showing raw messy data leading to a failed or biased model.
-- **Speaker Notes:** "AI teams spend weeks debugging model architecture, only to realize the problem was in the dataset all along. A cat in the dog folder quietly poisons training before the model ever starts."
+---
 
-## Slide 3: The Closed-Loop Workflow
-- **Headline:** The DataForge Approach
-- **Workflow Steps:**
-  1. **Upload & Evaluate:** Assess the baseline damage.
-  2. **Audit & Correct:** Fix missing/wrong labels and duplicates.
-  3. **Balance:** Address class imbalances.
-  4. **Re-evaluate & Export:** Prove the improvement.
-- **Visual:** Circular flowchart moving from "Raw Data" -> "DataForge Cockpit" -> "Clean Training Asset".
+## Slide 1 — DataForge one-liner
 
-## Slide 4: The Demo Dataset
-- **Headline:** Fixing "Animals-10"
-- **Content:**
-  - Base: Kaggle Animals-10
-  - Introduced Defects: 90 cats vs. 20 dogs (Imbalance), missing labels, obvious mislabels, and near-duplicates.
-- **Visual:** A grid of animal images with red "X"s over duplicates and wrong labels.
-- **Speaker Notes:** "We took a standard dataset and deliberately broke it to simulate real-world conditions. Watch how DataForge handles it."
+**Title:** DataForge
 
-## Slide 5: Proving the Improvement (Before/After)
-- **Headline:** Metrics That Matter
-- **Content:**
-  - Compare Baseline Quality Score vs. Final Quality Score.
-  - Highlight the change in Label Consistency and Class Balance.
-- **Visual:** Side-by-side distribution charts or gauge metrics showing significant improvement.
-- **Speaker Notes:** "We don't claim to improve model accuracy directly. We prove that we provide a structurally superior, training-ready dataset."
+**Tagline:**
+> Repair your training data before the model ever sees it.
 
-## Slide 6: Architecture & Integrations
-- **Headline:** Powered By Our Sponsors
-- **Points:**
-  - **Adaption Labs:** Rigorous manifest-level quality workflows and evaluations.
-  - **OpenAI (GPT-5.5 / Vision):** Visual auditing, reasoning, and structured reporting.
-  - **Convex:** Real-time state management and live dashboard updates.
-  - **Vercel:** Seamless, high-performance edge deployment.
-  - **Fal AI:** Synthetic data generation for class balancing.
-- **Visual:** Simple architecture diagram with sponsor logos at their respective layers.
-- **Speaker Notes:** "We're utilizing best-in-class tools. Adaption handles our manifest evaluations, GPT provides the reasoning layer, Convex gives us a live multiplayer-ready dashboard, Fal AI supplies instant synthetic balancing samples, and it all runs on Vercel."
+**Visual:** Logo + a one-line subtitle: *"Closed-loop dataset readiness for
+ML teams."*
 
-## Slide 7: Why It Matters & Next Steps
-- **Headline:** The Future of Data Readiness
-- **Points:**
-  - High-quality labeled data is the biggest bottleneck in AI.
-  - DataForge turns weeks of manual auditing into a 2-minute workflow.
-- **Call to Action:** Try the demo today.
-- **Speaker Notes:** "AI demand is growing, but data quality isn't keeping up. DataForge is the bridge. Thank you."
+**Speaker note:** This is the only slide that's pure framing. Every later
+slide cashes in a specific claim from this one.
+
+---
+
+## Slide 2 — The data quality problem
+
+**Title:** Most datasets ship broken
+
+**Bullets (one per defect):**
+- **Imbalance** — majority pets dominate; wildlife and edge cases are rare
+- **Missing labels** — folders that nobody finished labeling
+- **Mislabels** — *"a cat in the dog folder"* (← the hero line)
+- **Duplicates** — burst captures that leak into evaluation splits
+
+**Speaker note:** Land the hero line slowly. It's the one viewers remember.
+
+**Visual:** Four icons in a 2×2 grid. No data, no metrics — visceral framing.
+
+---
+
+## Slide 3 — The closed-loop workflow
+
+**Title:** Seven stages, deterministic and observable
+
+**Visual:** Horizontal pipeline diagram:
+```
+Upload → Evaluate → Labelize → Deduplicate → Balance → Re-evaluate → Export
+```
+
+**Subtitle:** Each stage emits named events to a live dashboard. Reviewers
+approve label and duplicate decisions before downstream metrics recompute.
+
+**Speaker note:** Emphasize that approval is *manual*, not auto-applied —
+that's what lets a human stay in the loop on what gets corrected.
+
+---
+
+## Slide 4 — The seeded demo dataset
+
+**Title:** 285 animal images, four deliberate defects
+
+**Two-column layout:**
+
+| Defect | Count |
+|---|---|
+| Class imbalance | Cats 90 / Owls 18 / Low-light 6 |
+| Missing labels | 22 unlabeled samples |
+| Mislabels | 8 (cat→dog, dog→fox, bird→owl, etc.) |
+| Duplicates | 7 near-duplicate bursts |
+
+**Footnote:** Dataset is seeded for repeatable demo runs. Real datasets get
+the same treatment with vision-model-based audit instead of seeded truth.
+
+---
+
+## Slide 5 — Before / after metrics
+
+**Title:** Measurable dataset-readiness lift
+
+**Side-by-side cards:**
+
+| Metric | Baseline | Final | Source |
+|---|---|---|---|
+| Quality | 62 | **84** | Adaption (manifest) |
+| Balance | 41 | **78** | Local (CV) |
+| Completeness | 74 | **96** | Local |
+| Consistency | 82 | **91** | Adaption |
+| Missing labels | 22 | **3** | Local |
+| Mislabels | 8 | **1** | Vision |
+| Duplicates | 7 | **0** | Local |
+
+**Footer:**
+> Every metric carries a source badge in the live UI: Adaption (cyan),
+> Local (green), Seeded (amber), Vision (lavender).
+
+**Speaker note:** This is where the Inferred-vs-Measured argument lands. We
+do *not* claim model accuracy improvement.
+
+---
+
+## Slide 6 — Architecture and provider boundaries
+
+**Title:** Honest provider boundaries
+
+**Diagram:**
+
+```
+                ┌─────────────────────────────┐
+                │   Manifest (CSV / JSON)    │ ← tabular metadata only
+                └────────────┬────────────────┘
+                             ▼
+                  ┌──────────────────────┐
+                  │  Adaption Labs       │ Manifest-level quality
+                  │  (manifest only)     │ (does NOT inspect pixels)
+                  └──────────────────────┘
+
+                ┌─────────────────────────────┐
+                │   Image pixels             │ ← stays local / per-pipeline
+                └────────────┬────────────────┘
+                             ▼
+                  ┌──────────────────────┐
+                  │ GPT Vision / Gemini  │ Visual audit:
+                  │ (vision lane)        │ label suggestions, duplicates
+                  └──────────────────────┘
+
+   Deterministic local metrics: distribution, balance (CV), completeness
+   GPT-5.5: structured repair plan from measurements + intent
+```
+
+**Speaker note:** This is the non-negotiable slide. Adaption is
+**manifest-level only** — it scores tabular dataset metadata, not images.
+Image-pixel understanding lives in the visual-audit lane (vision models or
+seeded demo truth). Anyone who reads the exported manifest's
+`metadata.providerBoundary` field sees the same statement in writing.
+
+---
+
+## Slide 7 — Why it matters and what's next
+
+**Title:** Dataset readiness, before training begins
+
+**Two columns:**
+
+**Why it matters now:**
+- Training is expensive; dataset issues compound through every epoch
+- Most teams discover quality problems *after* a bad checkpoint
+- We move that discovery to *before* training, with reviewable provenance
+
+**What's next:**
+- Live vision-audit lane (drop seeded mode for production datasets)
+- Convex-backed multi-user review queue
+- Fal opt-in synthetic generation for measured class gaps
+- Adaption recipes for prompt rephrase + reasoning traces on text manifests
+
+**Final line:**
+> "Better data is the smallest reliable lever you can pull on a training run."
