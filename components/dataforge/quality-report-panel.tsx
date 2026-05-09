@@ -189,14 +189,14 @@ export function QualityReportPanel({
           ) : null}
         </article>
 
-        {/* INFERRED — GPT-5.5 explanation, gaps, recommendations */}
+        {/* INFERRED — GPT explanation, gaps, recommendations */}
         <article className={`${styles.card} ${styles.inferred}`} aria-labelledby="qr-inferred">
           <div className={styles.cardKicker}>
             <span>Inferred</span>
             <small>Source: {reportProvider} · {qualityReport.model}</small>
           </div>
           <h3 id="qr-inferred" className={styles.cardTitle}>
-            GPT-5.5 repair plan
+            {formatModelLabel(qualityReport.model)} repair plan
           </h3>
 
           <p className={styles.summary}>{qualityReport.summary}</p>
@@ -380,6 +380,27 @@ const SOURCE_TOOLTIPS: Record<SourceTag, string> = {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Pretty-print an OpenAI model id for the panel heading.
+ *   "gpt-4o"               → "GPT-4o"
+ *   "gpt-4o-mini"          → "GPT-4o-mini"
+ *   "gpt-4.1"              → "GPT-4.1"
+ *   "deterministic-local"  → "Local"
+ *   "client-fallback"      → "Local"
+ *   "idle"                 → ""  (panel just says "repair plan")
+ *   anything else          → uppercased verbatim
+ */
+function formatModelLabel(model: string): string {
+  if (!model) return "GPT";
+  const lower = model.toLowerCase();
+  if (lower === "deterministic-local" || lower === "client-fallback") return "Local";
+  if (lower === "idle") return "";
+  if (lower.startsWith("gpt-")) {
+    return "GPT-" + model.slice(4);
+  }
+  return model.toUpperCase();
+}
 
 function formatVersion(version: string): string {
   // baseline → "Original"; balanced → "After repair"; etc.
