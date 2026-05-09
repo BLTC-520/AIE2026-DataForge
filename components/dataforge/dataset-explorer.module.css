@@ -102,3 +102,55 @@
   text-transform: uppercase;
   padding: 4px 8px;
 }
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.pagerRange {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pagerControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagerPage {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  min-width: 80px;
+  text-align: center;
+}
+
+.pagerButton {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #0d1111;
+  color: inherit;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.pagerButton:hover:not(:disabled) {
+  border-color: var(--cyan);
+  background: #131818;
+}
+
+.pagerButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
