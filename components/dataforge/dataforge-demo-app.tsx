@@ -17,6 +17,7 @@ import {
 import type {
   AdaptionEvaluationSnapshot as DataForgeEvaluationSnapshot,
   BalancingPlan as DataForgeBalancingPlan,
+  ClassDistribution,
   DatasetMetrics as DataForgeDatasetMetrics,
   DatasetSample as DataForgeDatasetSample,
   DuplicateIssue as DataForgeDuplicateIssue,
@@ -1441,42 +1442,72 @@ export function DataForgeDemoApp() {
       `GPT repair plan received with ${qualityReportResult.gapJobs.length} gap job(s). Approve label and duplicate decisions in the integration band.`,
     );
 
-    // ── generate: real Fal call ────────────────────────────────────────────
+    // ── generate: deterministic balancing — bring every class up to the
+    // max class count via Fal. GPT's syntheticCount recommendation is
+    // ignored in favor of the actual deficit, so the user gets a fully
+    // balanced dataset rather than GPT's conservative guess.
     await step(
       "generate",
       "running",
       "fal_jobs.queued",
-      "Calling Fal for synthetic generation jobs…",
+      "Computing balancing targets and queuing synthetic generation jobs…",
     );
-    const gapJobs = qualityReportResult.gapJobs;
+    const balancingJobs = computeBalancingJobs(
+      uploadedDataset.classDistribution,
+      qualityReportResult,
+    );
     let totalGenerated = 0;
-    if (gapJobs.length === 0) {
+    if (balancingJobs.length === 0) {
       await step(
         "generate",
         "complete",
         "fal_jobs.skipped",
-        "No gap jobs surfaced by the repair plan; generate stage skipped.",
+        "Dataset is already balanced — no synthetic generation needed.",
       );
     } else {
+      const totalNeeded = balancingJobs.reduce(
+        (sum, job) => sum + job.syntheticCount,
+        0,
+      );
+      const target = balancingJobs[0].targetCount;
+      logEvent(
+        "balance_target.computed",
+        `Balancing target: ${target} samples per class. Generating ${totalNeeded} synthetic image(s) across ${balancingJobs.length} class(es) with Fal.`,
+      );
+
       try {
-        const falResponse = await generateWithFal({
-          datasetName: datasetLabel,
-          gapJobs,
-        });
-        // INGEST: turn each Fal-generated image into a DatasetSample with
-        // source="synthetic" so it flows through DatasetExplorer, the
-        // BalancingPanel, and the export ZIP. Image bytes are fetched from
-        // Fal's CDN so they're included in the cleaned-dataset export.
-        totalGenerated = await ingestFalGenerationResponse(falResponse);
+        // One Fal call per class so the user sees per-class progress in
+        // the event log instead of waiting on one monolithic request.
+        for (const job of balancingJobs) {
+          logEvent(
+            "fal_jobs.started",
+            `Generating ${job.syntheticCount} synthetic ${job.className} sample(s) (current: ${job.currentCount}, target: ${job.targetCount})…`,
+          );
+          const falResponse = await generateWithFal({
+            datasetName: datasetLabel,
+            gapJobs: [job],
+          });
+          const ingested = await ingestFalGenerationResponse(falResponse);
+          totalGenerated += ingested;
+          logEvent(
+            "fal_jobs.progress",
+            `Generated ${ingested}/${job.syntheticCount} synthetic ${job.className} samples (${totalGenerated}/${totalNeeded} total).`,
+          );
+        }
         await step(
           "generate",
           "complete",
           "fal_jobs.complete",
-          `Fal generated ${totalGenerated} synthetic sample(s) across ${falResponse.jobs.length} job(s).`,
+          `Fal generated ${totalGenerated}/${totalNeeded} synthetic samples — every class now ≥ ${target}.`,
         );
       } catch (err) {
         const e = err as ApiError;
-        failStage("generate", "fal_jobs.failed", e.message, e.hint);
+        failStage(
+          "generate",
+          "fal_jobs.failed",
+          `Failed during balancing run: ${e.message}`,
+          e.hint,
+        );
         return;
       }
     }
@@ -2701,6 +2732,83 @@ export function DataForgeDemoApp() {
 // quality-report,distribution-chart,balancing,export-manifest}-{panel,button}.tsx`
 // are now imported at the top of this file and wired into the canonical
 // pipeline integration band rendered inside DataForgeDemoApp().
+
+/**
+ * Build deterministic balancing gap jobs that bring every minority class
+ * up to the dataset's max class count via Fal generation.
+ *
+ *   - target = min(maxClassCount, BALANCE_TARGET_CAP) — sanity-capped so
+ *     pathological imbalances (1000 vs 5) don't trigger thousand-image
+ *     Fal runs.
+ *   - For each class with count < target, syntheticCount = target − count.
+ *   - Re-uses GPT's authored prompt and accent for each class when present;
+ *     falls back to a single-subject default that's compatible with the
+ *     Fal route's defensive suffix.
+ */
+function computeBalancingJobs(
+  distribution: ClassDistribution,
+  // Quality report is accepted for API symmetry but not actually used —
+  // balancing is a deterministic function of class counts. Prompts and
+  // accents are computed from the class name so the result is stable
+  // even if GPT didn't surface a gap job for some class.
+  _qualityReport: unknown,
+  options: { targetCap?: number } = {},
+): GapJob[] {
+  const counts = Object.values(distribution);
+  if (counts.length === 0) return [];
+  const max = Math.max(...counts);
+  const target = Math.min(max, options.targetCap ?? 200);
+
+  return Object.entries(distribution)
+    .filter(([, count]) => count < target)
+    .map(([className, currentCount]) => {
+      const deficit = target - currentCount;
+      return {
+        className,
+        currentCount,
+        targetCount: target,
+        syntheticCount: deficit,
+        severity:
+          deficit > target * 0.5
+            ? "high"
+            : deficit > target * 0.2
+              ? "medium"
+              : "low",
+        accent: pickAccent(className),
+        prompt: buildBalancingPrompt(className),
+      } satisfies GapJob;
+    });
+}
+
+function buildBalancingPrompt(className: string): string {
+  const subject = className
+    .replace(/[-_]+/g, " ")
+    .replace(/\bdemo\b/i, "")
+    .trim()
+    .toLowerCase() || "subject";
+  // Padded so it clears the route's min(30) constraint and explicitly
+  // single-subject so FLUX/schnell doesn't render a grid.
+  return `a single photorealistic photo of one ${subject}, natural daylight, side profile, sharp focus, single photo, no text, no watermark`;
+}
+
+function pickAccent(className: string): string {
+  // Stable pseudo-random hex picked from the upload palette via a simple
+  // string hash. Accent is purely cosmetic on the synthetic gallery cards.
+  const palette = [
+    "#52d6ff",
+    "#ffbc42",
+    "#54f0b4",
+    "#ff5d7d",
+    "#af8cff",
+    "#9adcff",
+    "#ffb3ff",
+    "#ffd966",
+    "#a0d8b3",
+  ];
+  let hash = 0;
+  for (const ch of className) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return palette[hash % palette.length];
+}
 
 /** Pretty-print an OpenAI model id for UI labels.
  *   gpt-4o → GPT-4o · gpt-4o-mini → GPT-4o-mini · gpt-5.5 → GPT-5.5

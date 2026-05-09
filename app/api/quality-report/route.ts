@@ -23,7 +23,9 @@ const gapJobSchema = z.object({
   className: z.string().min(2).max(48),
   currentCount: z.number().int().nonnegative(),
   targetCount: z.number().int().positive(),
-  syntheticCount: z.number().int().nonnegative().max(80),
+  // Raised to 500 — client-side balancing flow may override syntheticCount
+  // to the full deficit between a class and the dataset's max class count.
+  syntheticCount: z.number().int().nonnegative().max(500),
   severity: z.enum(["low", "medium", "high"]),
   accent: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   prompt: z.string().min(30).max(260),

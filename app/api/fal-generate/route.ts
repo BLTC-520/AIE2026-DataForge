@@ -13,13 +13,18 @@ import { fal } from "@fal-ai/client";
 import { z } from "zod";
 
 export const runtime = "nodejs";
-export const maxDuration = 180;
+// Up from 180s — class-balancing runs can request hundreds of images per
+// class; flux/schnell processes ~4 images / 2-3s, so 200 images ≈ 100-150s
+// and we want headroom for retries / network jitter.
+export const maxDuration = 300;
 
 const gapJobSchema = z.object({
   className: z.string().min(2).max(48),
   currentCount: z.number().int().nonnegative(),
   targetCount: z.number().int().positive(),
-  syntheticCount: z.number().int().nonnegative().max(80),
+  // Up from 80 — balancing flow may request the full deficit between a
+  // class's current count and the dataset's max class count.
+  syntheticCount: z.number().int().nonnegative().max(500),
   severity: z.enum(["low", "medium", "high"]),
   accent: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   prompt: z.string().min(30).max(260),
@@ -27,7 +32,7 @@ const gapJobSchema = z.object({
 
 const requestSchema = z.object({
   datasetName: z.string().min(1),
-  gapJobs: z.array(gapJobSchema).min(1).max(8),
+  gapJobs: z.array(gapJobSchema).min(1).max(16),
 });
 
 type GapJob = z.infer<typeof gapJobSchema>;
@@ -67,8 +72,9 @@ export async function POST(request: Request) {
 
   const model = process.env.FAL_MODEL || "fal-ai/flux/schnell";
   // Logical per-job cap (how many images the user wants per gap job).
-  // Default 4 to fit a single Fal call. Settable via FAL_MAX_PER_JOB.
-  const perJobCap = clampInt(process.env.FAL_MAX_PER_JOB, 4, 1, 16);
+  // Raised to 500 so balancing runs can request the full deficit.
+  // Settable via FAL_MAX_PER_JOB.
+  const perJobCap = clampInt(process.env.FAL_MAX_PER_JOB, 500, 1, 500);
   // Floor: even if GPT requested syntheticCount=1, generate at least this
   // many images so the user can see the variation Fal produces.
   const perJobFloor = clampInt(process.env.FAL_MIN_PER_JOB, 3, 1, perJobCap);
@@ -76,6 +82,9 @@ export async function POST(request: Request) {
   // (Unprocessable Entity 422 if exceeded). If perJobCap > PER_CALL_MAX,
   // we do multiple sequential calls until the per-job target is reached.
   const PER_CALL_MAX = 4;
+  // Safety counter on the multi-call loop. perJobCap (500) / PER_CALL_MAX (4)
+  // = 125 max iterations; bump to 150 for headroom against transient errors.
+  const MAX_ITERATIONS = 150;
 
   fal.config({ credentials: apiKey });
 
@@ -100,7 +109,7 @@ export async function POST(request: Request) {
       const collected: FalImage[] = [];
       let remaining = target;
       let safetyCounter = 0;
-      while (remaining > 0 && safetyCounter < 8) {
+      while (remaining > 0 && safetyCounter < MAX_ITERATIONS) {
         const numImages = Math.min(remaining, PER_CALL_MAX);
         const result = await fal.subscribe(model, {
           input: {
