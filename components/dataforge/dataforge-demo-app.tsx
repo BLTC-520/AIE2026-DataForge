@@ -2302,7 +2302,9 @@ export function DataForgeDemoApp() {
           >
             <div className="section-heading">
               <span>Canonical pipeline</span>
-              <h2>Label · Deduplicate · Balance · Re-evaluate · Export</h2>
+              <h2 style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                Label · Deduplicate · Balance · Re-evaluate · Export
+              </h2>
             </div>
 
             <div className="integration-grid" style={{ display: "grid", gap: "1.25rem", gridTemplateColumns: "minmax(0, 1fr)" }}>
