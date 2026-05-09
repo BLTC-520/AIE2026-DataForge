@@ -5,6 +5,23 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 // Convex Document IDs: https://docs.convex.dev/using/document-ids
 import type { Id } from "../../convex/_generated/dataModel";
+import {
+  demoBalancingPlan,
+  demoBaselineEvaluation,
+  demoDuplicateIssues,
+  demoFinalEvaluation,
+  demoLabelIssues,
+  demoQualityReport,
+  demoSamples,
+} from "../../lib/dataforge/demo-data";
+import type {
+  AdaptionEvaluationSnapshot as DataForgeEvaluationSnapshot,
+  BalancingPlan as DataForgeBalancingPlan,
+  DatasetSample as DataForgeDatasetSample,
+  DuplicateIssue as DataForgeDuplicateIssue,
+  LabelIssue as DataForgeLabelIssue,
+  QualityReport as DataForgeQualityReport,
+} from "../../lib/dataforge/types";
 
 type StageStatus = "queued" | "running" | "complete" | "error";
 type SourceType = "original" | "synthetic";
@@ -1054,6 +1071,16 @@ export function DataForgeDemoApp() {
             />
           </section>
 
+          <FeatureIntegrationSlots
+            samples={demoSamples}
+            labelIssues={demoLabelIssues}
+            duplicateIssues={demoDuplicateIssues}
+            balancingPlan={demoBalancingPlan}
+            baselineEvaluation={demoBaselineEvaluation}
+            finalEvaluation={demoFinalEvaluation}
+            qualityReport={demoQualityReport}
+          />
+
           <section className="split-section" id="quality">
             <div className="quality-panel">
               <div className="section-heading">
@@ -1229,6 +1256,118 @@ export function DataForgeDemoApp() {
         </main>
       </div>
     </>
+  );
+}
+
+type FeatureSlotProps = {
+  samples: DataForgeDatasetSample[];
+  labelIssues: DataForgeLabelIssue[];
+  duplicateIssues: DataForgeDuplicateIssue[];
+  balancingPlan: DataForgeBalancingPlan[];
+  baselineEvaluation: DataForgeEvaluationSnapshot;
+  finalEvaluation: DataForgeEvaluationSnapshot;
+  qualityReport: DataForgeQualityReport;
+};
+
+function FeatureIntegrationSlots(props: FeatureSlotProps) {
+  return (
+    <section className="dashboard-band" aria-label="Parallel feature integration slots">
+      <div className="section-heading">
+        <span>Integration slots</span>
+        <h2>Parallel feature handoff surface</h2>
+      </div>
+      <div className="job-grid">
+        <LabelAuditPanel samples={props.samples} labelIssues={props.labelIssues} />
+        <DuplicateReviewPanel samples={props.samples} duplicateIssues={props.duplicateIssues} />
+        <QualityReportPanel
+          baselineEvaluation={props.baselineEvaluation}
+          finalEvaluation={props.finalEvaluation}
+          qualityReport={props.qualityReport}
+        />
+        <BalancingPanel balancingPlan={props.balancingPlan} />
+        <DatasetExplorer samples={props.samples} />
+        <ExportManifestButton
+          samples={props.samples}
+          labelIssues={props.labelIssues}
+          duplicateIssues={props.duplicateIssues}
+          balancingPlan={props.balancingPlan}
+          baselineEvaluation={props.baselineEvaluation}
+          finalEvaluation={props.finalEvaluation}
+          qualityReport={props.qualityReport}
+        />
+      </div>
+    </section>
+  );
+}
+
+function LabelAuditPanel({
+  samples,
+  labelIssues,
+}: {
+  samples: DataForgeDatasetSample[];
+  labelIssues: DataForgeLabelIssue[];
+}) {
+  return <IntegrationSlot title="LabelAuditPanel" detail={`${labelIssues.length} issues across ${samples.length} seeded samples`} />;
+}
+
+function DuplicateReviewPanel({
+  duplicateIssues,
+}: {
+  samples: DataForgeDatasetSample[];
+  duplicateIssues: DataForgeDuplicateIssue[];
+}) {
+  return <IntegrationSlot title="DuplicateReviewPanel" detail={`${duplicateIssues.length} duplicate candidates ready for review`} />;
+}
+
+function QualityReportPanel({
+  baselineEvaluation,
+  finalEvaluation,
+}: {
+  baselineEvaluation: DataForgeEvaluationSnapshot;
+  finalEvaluation: DataForgeEvaluationSnapshot;
+  qualityReport: DataForgeQualityReport;
+}) {
+  return <IntegrationSlot title="QualityReportPanel" detail={`${baselineEvaluation.qualityScore} to ${finalEvaluation.qualityScore} quality delta`} />;
+}
+
+function BalancingPanel({
+  balancingPlan,
+}: {
+  balancingPlan: DataForgeBalancingPlan[];
+}) {
+  return <IntegrationSlot title="BalancingPanel" detail={`${balancingPlan.length} class recommendations seeded`} />;
+}
+
+function DatasetExplorer({
+  samples,
+}: {
+  samples: DataForgeDatasetSample[];
+}) {
+  return <IntegrationSlot title="DatasetExplorer" detail={`${samples.length} records with label provenance`} />;
+}
+
+function ExportManifestButton({
+  samples,
+}: {
+  samples: DataForgeDatasetSample[];
+  labelIssues: DataForgeLabelIssue[];
+  duplicateIssues: DataForgeDuplicateIssue[];
+  balancingPlan: DataForgeBalancingPlan[];
+  baselineEvaluation: DataForgeEvaluationSnapshot;
+  finalEvaluation: DataForgeEvaluationSnapshot;
+  qualityReport: DataForgeQualityReport;
+}) {
+  return <IntegrationSlot title="ExportManifestButton" detail={`${samples.length} export records available after integration`} />;
+}
+
+function IntegrationSlot({ title, detail }: { title: string; detail: string }) {
+  return (
+    <article className="empty-state">
+      <span>
+        <strong>{title}</strong>
+        {detail}
+      </span>
+    </article>
   );
 }
 

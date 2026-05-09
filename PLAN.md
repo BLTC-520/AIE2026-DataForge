@@ -106,7 +106,7 @@ Recommended demo dataset:
   - **Action:** Keep `app/page.tsx` as a thin route entry that imports and renders `DataForgeDemoApp`.
   - **Constraint:** Brian owns this file until final integration is complete.
 
-- [ ] **Step 1.6: Create integration slots for parallel features**
+- [x] **Step 1.6: Create integration slots for parallel features**
   - **Action:** Add placeholder imports or placeholder components for `LabelAuditPanel`, `DuplicateReviewPanel`, `QualityReportPanel`, `BalancingPanel`, `DatasetExplorer`, and `ExportManifestButton`.
   - **Action:** Pass props using shared types only, not feature-specific internal types.
   - **Dependency:** Real components arrive from Bazel and Joseph later.
