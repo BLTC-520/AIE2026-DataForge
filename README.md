@@ -89,6 +89,43 @@ FAL_KEY=
 
 Keep real provider keys only in `.env.local`. Do not commit secrets to `.env.example`.
 
+## Using Convex Cloud (hosted deployment)
+
+Yes — you can run the app against a hosted Convex deployment (Convex “cloud”).
+
+What changes:
+
+- `NEXT_PUBLIC_CONVEX_URL` becomes your hosted Convex client URL (typically ends in `.convex.cloud`).
+- `NEXT_PUBLIC_CONVEX_SITE_URL` becomes your hosted HTTP Actions site URL (typically ends in `.convex.site`).
+- `CONVEX_DEPLOYMENT` is used by the Convex CLI for dev/deploy. It is not required by the Next.js runtime, but it’s fine to keep it in `.env.local`.
+
+How to set it up:
+
+1. Connect to a hosted deployment (first time prompts you to log in / pick a project):
+
+```bash
+npx convex dev
+```
+
+2. Deploy backend functions (HTTP Actions + schema) to the hosted deployment:
+
+```bash
+npx convex deploy
+```
+
+3. Copy your hosted URLs into `.env.local` (or set them in your hosting provider):
+
+```env
+NEXT_PUBLIC_CONVEX_URL=https://<your-deployment>.convex.cloud
+NEXT_PUBLIC_CONVEX_SITE_URL=https://<your-deployment>.convex.site
+```
+
+The image upload button specifically calls:
+
+- `GET {NEXT_PUBLIC_CONVEX_SITE_URL}/generateUploadUrl`
+- uploads the file to the returned `uploadUrl`
+- `POST {NEXT_PUBLIC_CONVEX_SITE_URL}/getImageUrl` to resolve a public URL
+
 ## GPT-5.5 Usage
 
 The quality report flow calls `POST /api/quality-report`. That server route sends the training intent, class distribution, label issues, duplicate issues, balancing plan, and baseline metrics to GPT-5.5 using the OpenAI Responses API with a structured schema.
