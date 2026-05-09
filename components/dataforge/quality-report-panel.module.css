@@ -203,10 +203,10 @@
   color: var(--df-text-dim);
 }
 
-.sourceBadge[data-source="adaption"] { color: var(--df-measured-accent); background: rgba(120, 220, 255, 0.08); }
-.sourceBadge[data-source="local"]    { color: var(--df-good);            background: rgba(120, 230, 170, 0.08); }
-.sourceBadge[data-source="seeded"]   { color: var(--df-warn-text);       background: var(--df-warn-bg); }
-.sourceBadge[data-source="vision"]   { color: var(--df-inferred-accent); background: rgba(200, 160, 255, 0.08); }
+.sourceBadge[data-source="gpt"]    { color: var(--df-measured-accent); background: rgba(120, 220, 255, 0.08); }
+.sourceBadge[data-source="local"]  { color: var(--df-good);            background: rgba(120, 230, 170, 0.08); }
+.sourceBadge[data-source="seeded"] { color: var(--df-warn-text);       background: var(--df-warn-bg); }
+.sourceBadge[data-source="vision"] { color: var(--df-inferred-accent); background: rgba(200, 160, 255, 0.08); }
 
 .sourceBadgeCompact { font-size: 0.5rem; padding: 0.1rem 0.3rem; }
 

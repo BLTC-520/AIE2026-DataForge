@@ -52,6 +52,13 @@ export type UploadedDataset = {
   warnings: string[];
   /** Object URLs created for image previews. Pass to revokeUploadedDataset. */
   imageObjectUrls: string[];
+  /**
+   * Image bytes keyed by sampleKey — kept so the export pipeline can
+   * re-zip the cleaned dataset (organized by finalLabel, duplicates
+   * excluded) instead of shipping JSON-only metadata. Not added to
+   * DatasetSample so the canonical types stay JSON-serializable.
+   */
+  imageBlobs: Map<string, Blob>;
 };
 
 export async function parseDatasetZip(file: File): Promise<UploadedDataset> {
@@ -100,6 +107,7 @@ export async function parseDatasetZip(file: File): Promise<UploadedDataset> {
 
   const samples: DatasetSample[] = [];
   const imageObjectUrls: string[] = [];
+  const imageBlobs = new Map<string, Blob>();
   const hashIndex = new Map<string, number>(); // sha1 -> first sample index
   const duplicateIssues: DuplicateIssue[] = [];
   const labelIssues: LabelIssue[] = [];
@@ -126,6 +134,7 @@ export async function parseDatasetZip(file: File): Promise<UploadedDataset> {
     const id = `upl-${sampleIndex.toString().padStart(4, "0")}`;
     const objectUrl = URL.createObjectURL(blob);
     imageObjectUrls.push(objectUrl);
+    imageBlobs.set(sampleKey, blob);
 
     const sample: DatasetSample = {
       id,
@@ -196,12 +205,13 @@ export async function parseDatasetZip(file: File): Promise<UploadedDataset> {
     classDistribution,
     warnings,
     imageObjectUrls,
+    imageBlobs,
   };
 }
 
 /**
- * Release the browser object URLs created during parseDatasetZip. Call this
- * before swapping in a new ZIP, or on component unmount.
+ * Release the browser object URLs created during parseDatasetZip and clear
+ * the retained image blobs. Call before swapping in a new ZIP, or on unmount.
  */
 export function revokeUploadedDataset(uploaded: UploadedDataset): void {
   for (const url of uploaded.imageObjectUrls) {
@@ -211,6 +221,7 @@ export function revokeUploadedDataset(uploaded: UploadedDataset): void {
       // ignore — already revoked or invalid URL
     }
   }
+  uploaded.imageBlobs.clear();
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────
