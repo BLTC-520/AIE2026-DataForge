@@ -101,7 +101,7 @@ Recommended demo dataset:
   - **Action:** Add the new stage order: Upload, Evaluate, Labelize, Deduplicate, Balance, Re-evaluate, Export.
   - **Constraint:** Keep timing deterministic so the live demo is repeatable.
 
-- [ ] **Step 1.5: Extract the page shell (`components/dataforge/dataforge-demo-app.tsx`)**
+- [x] **Step 1.5: Extract the page shell (`components/dataforge/dataforge-demo-app.tsx`)**
   - **Action:** Move most of the existing `app/page.tsx` logic into `DataForgeDemoApp`.
   - **Action:** Keep `app/page.tsx` as a thin route entry that imports and renders `DataForgeDemoApp`.
   - **Constraint:** Brian owns this file until final integration is complete.
