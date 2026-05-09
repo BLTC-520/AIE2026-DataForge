@@ -138,6 +138,10 @@ Provider boundary decision:
 
 *Depends on: Bazel Phase 1 and Joseph Phase 1.*
 
+- [x] **Step B2.0: Add image upload url demo (Convex Storage + HTTP actions)**
+  - **Action:** Add Convex HTTP actions to generate upload URLs and resolve uploaded file URLs.
+  - **Action:** Add a small UI button that uploads an image file and prints the resulting URL.
+
 - [ ] **Step B2.1: Import completed feature components into the app shell**
   - **Action:** Wire `LabelAuditPanel` into the pipeline after baseline evaluation.
   - **Action:** Wire `QualityReportPanel`, `DistributionChart`, `DuplicateReviewPanel`, `BalancingPanel`, `DatasetExplorer`, and `ExportManifestButton` into the dashboard.

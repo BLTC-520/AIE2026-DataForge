@@ -292,6 +292,9 @@ export function DataForgeDemoApp() {
   const [trainingIntent, setTrainingIntent] = useState(
     "Train an animal image classifier that works across common pets and wildlife, including low-light camera-trap photos.",
   );
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const [uploadedImageStatus, setUploadedImageStatus] = useState<"idle" | "uploading" | "error" | "complete">("idle");
+  const [uploadedImageError, setUploadedImageError] = useState<string | null>(null);
   const [activeDatasetId, setActiveDatasetId] = useState<Id<"datasets"> | null>(null);
   const [datasetLoaded, setDatasetLoaded] = useState(false);
   const [analysisRunning, setAnalysisRunning] = useState(false);
@@ -459,6 +462,77 @@ export function DataForgeDemoApp() {
   const qualitySourceLabel = qualityReportSource === "convex" ? "Convex persisted report" : "Local fallback report";
   const activeDatasetClassEntries = Object.entries(activeDistribution);
   const activeDatasetSampleCount = totalCount(activeDistribution);
+
+  async function uploadImageFile(file: File) {
+    setUploadedImageUrl(null);
+    setUploadedImageError(null);
+    setUploadedImageStatus("uploading");
+
+    const convexSiteUrl = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
+    if (!convexSiteUrl) {
+      setUploadedImageStatus("error");
+      setUploadedImageError("NEXT_PUBLIC_CONVEX_SITE_URL is not set.");
+      return;
+    }
+
+    try {
+      const uploadUrlResponse = await fetch(`${convexSiteUrl}/generateUploadUrl`, {
+        method: "GET",
+      });
+
+      if (!uploadUrlResponse.ok) {
+        throw new Error(`generateUploadUrl failed (${uploadUrlResponse.status})`);
+      }
+
+      const uploadUrlPayload = (await uploadUrlResponse.json()) as { uploadUrl?: unknown };
+      const uploadUrl = typeof uploadUrlPayload.uploadUrl === "string" ? uploadUrlPayload.uploadUrl : null;
+      if (!uploadUrl) {
+        throw new Error("generateUploadUrl returned an invalid payload");
+      }
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+        },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`upload failed (${uploadResponse.status})`);
+      }
+
+      const uploadResult = (await uploadResponse.json()) as { storageId?: unknown };
+      const storageId = typeof uploadResult.storageId === "string" ? uploadResult.storageId : null;
+      if (!storageId) {
+        throw new Error("upload response did not include storageId");
+      }
+
+      const urlResponse = await fetch(`${convexSiteUrl}/getImageUrl`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ storageId }),
+      });
+
+      if (!urlResponse.ok) {
+        throw new Error(`getImageUrl failed (${urlResponse.status})`);
+      }
+
+      const urlPayload = (await urlResponse.json()) as { url?: unknown };
+      const url = typeof urlPayload.url === "string" ? urlPayload.url : null;
+      if (!url) {
+        throw new Error("getImageUrl returned null (file might not be accessible yet)");
+      }
+
+      setUploadedImageUrl(url);
+      setUploadedImageStatus("complete");
+    } catch (error) {
+      setUploadedImageStatus("error");
+      setUploadedImageError(error instanceof Error ? error.message : "Upload failed");
+    }
+  }
 
   function logEvent(name: string, message: string) {
     const time = new Date().toLocaleTimeString([], {
@@ -900,6 +974,70 @@ export function DataForgeDemoApp() {
                   value={trainingIntent}
                   onChange={(event) => setTrainingIntent(event.target.value)}
                 />
+
+                <label className="sr-only" htmlFor="imageUpload">
+                  Upload an image file
+                </label>
+                <input
+                  id="imageUpload"
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    void uploadImageFile(file);
+                  }}
+                  style={{ display: "none" }}
+                />
+
+                <button
+                  className="dropzone"
+                  type="button"
+                  onClick={() => {
+                    const input = document.getElementById("imageUpload") as HTMLInputElement | null;
+                    input?.click();
+                  }}
+                  disabled={uploadedImageStatus === "uploading"}
+                >
+                  <span className="drop-icon" aria-hidden="true">
+                    ⊞
+                  </span>
+                  <span>
+                    <strong>
+                      {uploadedImageStatus === "uploading" ? "Uploading image..." : "Upload image"}
+                    </strong>
+                    <small>
+                      {uploadedImageStatus === "complete" && uploadedImageUrl
+                        ? "Uploaded to Convex storage. URL ready below."
+                        : "Select an image to upload via Convex Storage."}
+                    </small>
+                  </span>
+                </button>
+
+                {uploadedImageStatus === "error" && uploadedImageError ? (
+                  <div className="fallback-banner">{uploadedImageError}</div>
+                ) : null}
+
+                {uploadedImageUrl ? (
+                  <div className="intent-console" aria-label="Uploaded image url">
+                    <label>Uploaded image URL</label>
+                    <div style={{ display: "grid", gap: 8 }}>
+                      <a href={uploadedImageUrl} target="_blank" rel="noreferrer">
+                        {uploadedImageUrl}
+                      </a>
+                      <img
+                        src={uploadedImageUrl}
+                        alt="uploaded"
+                        style={{
+                          width: "100%",
+                          maxWidth: 320,
+                          borderRadius: 12,
+                          border: "1px solid rgba(255, 255, 255, 0.12)",
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : null}
 
                 <button className="dropzone" type="button" onClick={loadDemoDataset}>
                   <span className="drop-icon" aria-hidden="true">

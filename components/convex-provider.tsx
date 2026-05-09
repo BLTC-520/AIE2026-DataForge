@@ -8,16 +8,12 @@ type ConvexClientProviderProps = {
   children: ReactNode;
 };
 
-const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || "http://127.0.0.1:3210";
 
-const convexClient = convexUrl ? new ConvexReactClient(convexUrl) : null;
+const convexClient = new ConvexReactClient(convexUrl);
 
 export default function ConvexClientProvider({ children }: ConvexClientProviderProps) {
   const client = useMemo(() => convexClient, []);
-
-  if (!client) {
-    return <>{children}</>;
-  }
 
   return <ConvexProvider client={client}>{children}</ConvexProvider>;
 }
