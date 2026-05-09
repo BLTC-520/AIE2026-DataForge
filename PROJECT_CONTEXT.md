@@ -759,3 +759,35 @@ Recommended skills:
 Implementation rule:
 
 The core build remains: partially labeled animal image dataset upload, Convex-backed live pipeline, seeded or GPT Vision/Gemini visual audit, source-labeled manifest quality evaluation, GPT-5.5 label and balance report, user-approved label completions and corrections, class balancing metadata, clean dataset export, and before/after quality visualization.
+
+## 5. Frontline design: realtime cleaning pipeline (post-upload)
+
+After the user uploads data and DataForge begins evaluation and cleaning, the primary cockpit should surface **where the run is in the repair loop** and **what just happened**, without requiring a full page refresh. Convex is the source of truth for pipeline state: backend workers and mutations append **stage events** as the cleaning and evaluation work advances; the frontend **subscribes** to those documents (or a derived query) so the UI updates in realtime.
+
+### 5.1 User-facing goals
+
+- Show a **horizontal or vertical pipeline** (steps) that mirrors the product flow: normalize manifest, baseline evaluation, vision audit / label issues, duplicate detection, balancing plan, apply approved repairs (when applicable), re-evaluation, report ready.
+- **Highlight the active stage** and mark completed stages; optionally show **skipped** or **degraded** stages when a provider path falls back to deterministic demo behavior.
+- Surface a **scrollable event log** (newest at top or bottom, pick one convention and keep it) with short messages, timestamps, and optional severity or source tags (for example Adaption snapshot vs. internal adapter).
+- Keep the judge narrative obvious: "the system is not stuck; it is moving through named stages backed by Convex."
+
+### 5.2 Convex event model (conceptual)
+
+- Tie all events to a **run** or **dataset project** identifier so one upload produces one ordered stream (or multiple parallel streams if the product later splits work).
+- Each **stage transition** and meaningful sub-step should produce an **append-only event**: stage id, status (`pending`, `running`, `completed`, `failed`, `skipped`), optional progress fraction, human-readable message, machine-oriented payload (IDs, counts, error codes) for dashboards and debugging.
+- Idempotent or retried work should either **dedupe** by idempotency key in the writer or **append** with a clear "retry" event so the UI does not lie about progress.
+- Long-running steps should emit **heartbeat or progress** events where allowed (see implementation constraints about not blocking the dashboard: write updates early and often).
+
+### 5.3 Frontend wiring
+
+- Prefer Convex **queries with subscriptions** (or the project's equivalent realtime hook) keyed by run/project id so a single screen stays live for the full cleaning session.
+- The pipeline component should **derive current stage** from the latest event per stage or from an explicit `currentStage` field maintained on the run document, whichever keeps the client simpler; avoid duplicating conflicting state across many client-only variables.
+- The event log should **render from the same subscription** as the pipeline so judges never see a mismatch between "active step" and "last log line."
+- On terminal states (`failed`, `completed`), lock or soften animations and show a clear **call to action** (open report, review labels, export) consistent with section 3 user flow.
+
+### 5.4 Demo and honesty
+
+- If the demo uses mocked delays, events should still be written on the **same Convex path** as a live run so the UI behavior is identical; only the backend producer changes.
+- When a stage is simulated, the log message should remain accurate (for example internal deterministic adapter vs. live Adaption evaluation) so the pitch stays aligned with provider boundaries in section 2.
+
+This section complements **Convex visibility** in the top-line story: the cleaning pipeline is the judge-visible spine between upload and the final quality snapshot, driven by realtime Convex events end to end.
