@@ -60,6 +60,8 @@ For the AI Engineer hackathon, DataForge should optimize for four judging moment
 
 The MVP should focus on one clean dataset type: **partially labeled animal image classification datasets**. Supporting CSV, JSON, and arbitrary images is useful later, but a 7-hour build should prioritize a pre-prepared animal classifier demo with deliberate class imbalance, missing labels, and obvious mislabeled samples such as a cat image placed in the dog class. Animal classes are visually obvious, easy for judges to understand, and ideal for showing label completion, relabeling, and balancing without training a model.
 
+The prepared animal subset must stay intentionally imbalanced. Do not downsample every class to the same count. Keep a bounded random sample per animal class between 20 and 100 images, with majority classes near 100 and minority classes near 20. This creates the bias and balance gap the demo is supposed to repair. Fal-generated images should be used only after the balancing plan identifies underrepresented classes and the user approves optional synthetic additions needed to move minority classes toward the target distribution.
+
 ## 2. Core Positioning
 
 DataForge should be pitched as a **computer-vision dataset repair cockpit powered by Adaption Labs**, not as a replacement for Adaption Labs. Adaption Labs owns the broad dataset lifecycle and quality evaluation. DataForge owns the image-specific workflow: visual label review, missing-label completion, wrong-label correction, duplicate-image review/removal, class balancing, and exportable image-manifest provenance.
@@ -697,11 +699,11 @@ Recommended demo:
 
 - Task: animal image classification across pets and wildlife.
 - Training intent: "Train an animal image classifier that works across common pets and wildlife, including low-light camera-trap photos."
-- Class 1: cats, 120 images.
-- Class 2: dogs, 100 images.
-- Class 3: birds, 70 images.
-- Class 4: foxes, 15 images.
-- Class 5: owls, 10 images.
+- Class count targets should intentionally range from 20 to 100 images per animal class.
+- Majority classes should sit near 80 to 100 images.
+- Minority classes should sit near 20 to 40 images.
+- The class imbalance is intentional and should remain visible before repair.
+- Fal should generate approved synthetic additions for underrepresented classes only after the balancing plan identifies the gap.
 - Scenario gap: night-time or low-light wildlife examples, 0 to 5 images.
 - Missing-label seed: 15 to 30 images in an unlabeled or unknown folder.
 - Label issue seed: 5 to 10 intentionally mislabeled images, such as cats in the dog folder, foxes labeled as dogs, or owls labeled as birds.
