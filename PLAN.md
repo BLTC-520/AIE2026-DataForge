@@ -107,6 +107,7 @@ Provider boundary decision:
 - [ ] **Step 1.3.1: Recover Fal AI Synthetic Mock Data**
   - **Action:** Recover the images that were deleted in commit `7dbd4f14` (which created the deliberate imbalance).
   - **Action:** Add these recovered images into the demo seed as `falSyntheticSamples` (or similar).
+  - **Constraint:** Only recover enough images to balance the "weights" against the most populous class. (e.g., if the majority class has 100 images, recover only enough images so that no class exceeds 100 images total).
   - **Constraint:** These must be presented to judges and hardcoded in the data as "actual synthetic images from fal ai" (never "simulated"). This exactly mirrors the real-world workflow and saves us from hitting 45-second generation limits on stage.
 
 - [x] **Step 1.4: Create pipeline state helpers (`lib/dataforge/pipeline.ts`)**
