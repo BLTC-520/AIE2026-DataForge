@@ -4,41 +4,43 @@ DataForge is a hackathon product concept for AI Engineer Singapore.
 
 ## 1. Vision & Core Thesis
 
-**DataForge** is an intelligent dataset curator for ML engineers. It helps a team inspect an existing dataset, understand whether it is good enough for a training goal, generate targeted synthetic samples for missing coverage, and re-evaluate the improved dataset without needing to train a model during the demo.
+**DataForge** is an intelligent dataset curator for ML engineers working with partially labeled image datasets. A user uploads images with incomplete, noisy, or incorrect labels; DataForge evaluates the dataset with Adaption Labs, identifies missing labels and likely mislabels, helps the user approve label fixes, balances class weightage or sample distribution, and exports a clean labeled dataset with a quality report.
 
 The core philosophy is simple: **DataForge is a closed-loop data quality system, not a model training platform.**
 
-Most ML teams do not fail because they cannot start a training run. They fail because the dataset is quietly broken before training begins: classes are imbalanced, edge cases are missing, labels are inconsistent, duplicates leak across splits, and visual diversity is too narrow. These problems usually surface late, after wasted training cycles and confusing evaluation results.
+Most ML teams do not fail because they cannot start a training run. They fail because the dataset is quietly broken before training begins: classes are imbalanced, many samples are unlabeled, labels are inconsistent, objects are mislabeled, duplicates leak across splits, and visual diversity is too narrow. These problems usually surface late, after wasted training cycles and confusing evaluation results.
 
-DataForge moves the quality loop earlier. A user uploads a dataset and describes the model they want to train. The system evaluates the dataset, explains the gaps, proposes targeted repair actions, generates synthetic samples only where they are needed, and then evaluates again. The key demo artifact is the **before/after dataset quality delta**, not a trained model.
+DataForge moves the quality loop earlier. A user uploads a partially labeled image dataset and describes the classifier they want to train. The system evaluates the dataset, explains missing labels, likely wrong labels, and class imbalance, proposes label completions and corrections, creates a balancing plan, and then evaluates the cleaned dataset again. The key demo artifact is the **before/after dataset quality and labelization delta**, not a trained model.
 
 This distinction matters for the hackathon. DataForge should not promise "we improved model accuracy" unless a model is actually trained and evaluated. Instead, it should prove a more realistic claim:
 
-1. The original dataset had measurable quality issues.
-2. Adaption Labs evaluation identified or scored those issues.
-3. GPT-5.5 translated those metrics into an actionable gap report.
-4. Fal generated targeted synthetic data to fill the detected gaps.
-5. Adaption Labs evaluation showed the augmented dataset improved on quality, coverage, balance, or consistency metrics.
+1. The original dataset had measurable quality issues: missing labels, wrong labels, and class imbalance.
+2. Adaption Labs evaluation identified or scored those issues where supported and provided the primary quality signal.
+3. GPT-5.5 translated those metrics and dataset metadata into an actionable label-quality and balancing report.
+4. The user reviewed missing-label suggestions and likely mislabeled samples, then approved corrected labels.
+5. DataForge produced a cleaned and labelized dataset manifest with balancing metadata.
+6. Adaption Labs evaluation showed the cleaned dataset improved on quality, balance, completeness, or consistency metrics.
 
 The winning thesis is that dataset curation can become an **adaptive improvement loop**:
 
 1. Evaluate the dataset.
-2. Explain the gaps.
-3. Generate or recommend repairs.
-4. Re-ingest the repaired dataset.
-5. Evaluate again.
-6. Export a better dataset.
+2. Explain missing labels, likely wrong labels, and class imbalance.
+3. Review and apply label completions and corrections.
+4. Balance the dataset through class weights, sampling recommendations, or optional generated/collected additions.
+5. Re-ingest the cleaned dataset.
+6. Evaluate again with Adaption Labs.
+7. Export a clean labeled dataset and report.
 
-DataForge should feel technical and credible. It should avoid the common hackathon trap of showing synthetic images as a gimmick. Synthetic data is valuable only when it is tied to a measured gap and a re-evaluation step. The user should see exactly why a generation job exists, what class or scenario it is meant to improve, and whether the second evaluation actually moved the quality score.
+DataForge should feel technical and credible. It should avoid the common hackathon trap of treating generated images as the product. The core value is labelization and dataset quality repair: every sample should end with a clear label status, every correction should preserve provenance, and every balancing decision should be tied to measured dataset gaps and a second Adaption Labs evaluation.
 
 For the AI Engineer hackathon, DataForge should optimize for four judging moments:
 
 1. **Adaption Labs centrality:** the evaluation API must be the core source of dataset quality truth.
-2. **GPT-5.5 intelligence:** GPT-5.5 should explain metrics, detect likely issues, and produce structured repair plans.
-3. **Fal usefulness:** Fal should generate targeted synthetic images for underrepresented classes or scenarios, not random images.
+2. **GPT-5.5 intelligence:** GPT-5.5 should explain metrics, detect likely issues, suggest label corrections, and produce structured repair plans.
+3. **Balancing usefulness:** DataForge should produce a concrete balancing plan for underrepresented classes through weights, sampling recommendations, and optional targeted synthetic or collected additions.
 4. **Convex visibility:** the entire pipeline should be visible live through a realtime dashboard.
 
-The MVP should focus on one clean dataset type: **animal image classification datasets**. Supporting CSV, JSON, and arbitrary images is useful later, but a 7-hour build should prioritize a pre-prepared animal classifier demo with deliberate class imbalance and missing visual scenarios. Animal classes are visually obvious, safe for synthetic generation, easy for judges to understand, and still support the evergreen thesis that AI companies need fresh, up-to-date data as the world changes. Tabular upload can be a lightweight parser if time allows, but the best live demo will come from images because Fal can visibly repair image-class gaps.
+The MVP should focus on one clean dataset type: **partially labeled animal image classification datasets**. Supporting CSV, JSON, and arbitrary images is useful later, but a 7-hour build should prioritize a pre-prepared animal classifier demo with deliberate class imbalance, missing labels, and obvious mislabeled samples such as a cat image placed in the dog class. Animal classes are visually obvious, easy for judges to understand, and ideal for showing label completion, relabeling, and balancing without training a model.
 
 ## 2. Market Context & Competitive Differentiators
 
@@ -55,17 +57,18 @@ Common buckets include:
 5. **Data quality and observability systems:** Great Expectations, WhyLabs, Evidently, and Monte Carlo focus on validation, drift, and data quality checks, often more for production pipelines than rapid training-set repair.
 6. **Manual notebooks and scripts:** Many ML engineers still use Python notebooks, pandas, augmentation libraries, and ad hoc scripts to inspect datasets and patch gaps.
 
-The gap DataForge targets is the space between evaluation, explanation, and repair. Many tools can label data. Many tools can generate data. Many tools can chart data. Fewer tools provide a fast loop where dataset quality is evaluated, repaired, and evaluated again in one product flow.
+The gap DataForge targets is the space between evaluation, explanation, labelization, and dataset balancing. Many tools can label data. Many tools can generate data. Many tools can chart data. Fewer tools provide a fast loop where partially labeled image datasets are evaluated, missing labels are filled, wrong labels are reviewed, imbalance is repaired, and the cleaned dataset is evaluated again in one product flow.
 
 **Where DataForge wins:**
 
 1. **Evaluation-first workflow:** Adaption Labs evaluation is the anchor. The product does not ask judges to trust a pretty chart or an LLM's opinion. It shows a measured baseline and a measured post-repair state.
 2. **No model training required:** DataForge proves dataset improvement without spending hackathon time training a model. This avoids slow, flaky, GPU-dependent demos.
 3. **Intent-aware analysis:** The user describes what they want to train. GPT-5.5 interprets the dataset relative to that objective, so the gap report is not generic. A dataset for "cracked pavement detection at night" has different quality needs than a dataset for "daytime road surface classification."
-4. **Targeted synthetic generation:** Fal is used to fill concrete gaps. If potholes are underrepresented, generate potholes. If nighttime cracked pavement is missing, generate varied nighttime cracked pavement. Do not generate synthetic data where the dataset is already healthy.
-5. **Realtime pipeline visibility:** Convex turns a backend pipeline into a live operational interface. Judges can watch ingest, adapt, evaluate, augment, and re-evaluate stages progress without refreshing.
-6. **Before/after quality delta:** The central UI primitive is a comparison: original dataset versus augmented dataset. Counts, distribution, score, and recommendations should visibly change.
-7. **Exportable dataset artifact:** Even if export is a stretch feature, the architecture should treat the augmented dataset as a real artifact with source metadata, synthetic flags, prompts, and evaluation snapshots.
+4. **AI-assisted labelization:** DataForge highlights unlabeled samples and likely mislabeled examples, then suggests labels or corrected labels, such as a cat image currently assigned to the dog class. The user stays in control by approving or rejecting corrections before they affect the dataset.
+5. **Balancing plan:** DataForge calculates class imbalance and recommends class weights, sampling changes, or optional targeted additions for underrepresented classes. Do not add data where the dataset is already healthy.
+6. **Realtime pipeline visibility:** Convex turns a backend pipeline into a live operational interface. Judges can watch ingest, evaluate, labelize, balance, and re-evaluate stages progress without refreshing.
+7. **Before/after quality delta:** The central UI primitive is a comparison: original dataset versus cleaned labeled dataset. Counts, distribution, score, missing labels, label issues, and recommendations should visibly change.
+8. **Exportable dataset artifact:** The architecture should treat the cleaned dataset as a real artifact with source metadata, original labels, final labels, label correction history, balancing metadata, and evaluation snapshots.
 
 DataForge should not compete as a full annotation suite or full MLOps platform. It should compete as a **pre-training dataset repair cockpit**.
 
@@ -80,9 +83,9 @@ Primary users:
 
 Primary hackathon positioning:
 
-**DataForge is an adaptive dataset repair loop: evaluate, explain, augment, re-evaluate, export.**
+**DataForge is an adaptive dataset labelization loop: evaluate, explain, label, relabel, balance, re-evaluate, export.**
 
-The winning demo should show a deliberately imbalanced image dataset, run evaluation, generate missing examples, run evaluation again, and display an improved quality score or balance metric. The synthetic images are not the climax. The measured improvement is the climax.
+The winning demo should show a deliberately imbalanced, partially labeled image dataset, run Adaption Labs evaluation, surface missing labels and likely label mistakes, apply approved labels and relabels, rebalance class weightage, run evaluation again, and display an improved quality score, label completeness score, consistency score, or balance metric. The cleaned labelized dataset and report are the climax.
 
 ## 3. Comprehensive User Flow & Lifecycle
 
@@ -90,23 +93,33 @@ The winning demo should show a deliberately imbalanced image dataset, run evalua
 
 - **Dataset Project:** A single dataset improvement workspace created from one upload and one training intent.
 - **Training Intent:** The user's natural language description of the model they want to train, such as "a classifier that detects cracked pavement, potholes, and intact road surfaces in urban street photos."
-- **Source Dataset:** The original uploaded dataset before any repair or synthetic augmentation.
+- **Source Dataset:** The original uploaded dataset before any labeling, relabeling, balancing, or optional augmentation.
 - **Sample:** A single row, image, or data item in the dataset.
 - **Label / Class:** The target category associated with a sample. For MVP, labels should map to image classification classes.
+- **Label Issue:** A suspected problem where a sample's assigned label may not match its visual content or expected class taxonomy.
+- **Missing Label:** A sample with no assigned class, empty manifest label, or unknown folder/category.
+- **Suggested Label Correction:** An AI-proposed replacement label with confidence, rationale, and review status.
+- **Suggested Label Completion:** An AI-proposed label for an unlabeled sample with confidence, rationale, and review status.
+- **Relabeled Sample:** An original sample whose label was changed after user approval. This is distinct from a synthetic sample.
+- **Labelized Dataset:** The dataset after missing labels have been filled where possible and incorrect labels have been corrected or marked for manual review.
 - **Dataset Manifest:** A CSV or JSON file that maps samples to labels and metadata. For zip uploads, the manifest may be inferred from folder names in the MVP.
 - **Evaluation Snapshot:** A point-in-time Adaption Labs evaluation result for a dataset version.
 - **Quality Score:** The primary score returned by Adaption Labs or derived from its metrics. It should be displayed with the metric name and source.
-- **Gap:** A measurable issue in the dataset, such as an underrepresented class, missing scenario, skewed lighting condition, duplicate samples, or label inconsistency.
-- **Repair Plan:** A GPT-5.5-generated structured set of recommended actions based on evaluation metrics and dataset metadata.
-- **Synthetic Generation Job:** A Fal job that generates new samples for a specific class or scenario.
-- **Synthetic Sample:** A generated sample tagged with its source provider, prompt, target class, and generation job ID.
-- **Augmented Dataset:** The source dataset plus approved synthetic samples and optional adaptations.
-- **Improvement Delta:** The comparison between baseline evaluation and post-augmentation evaluation.
-- **Export Bundle:** A downloadable dataset package, optionally in Hugging Face-compatible format.
+- **Gap:** A measurable issue in the dataset, such as an underrepresented class, missing label, missing scenario, duplicate sample, or label inconsistency.
+- **Balancing Plan:** A structured set of recommended class weights, sampling adjustments, or optional additions for underrepresented classes.
+- **Repair Plan:** A GPT-5.5-generated structured set of recommended actions based on Adaption Labs evaluation metrics, label issues, missing labels, and dataset metadata.
+- **Synthetic Generation Job:** Optional stretch Fal job that generates new samples for a specific underrepresented class or scenario.
+- **Synthetic Sample:** Optional generated sample tagged with its source provider, prompt, target class, and generation job ID.
+- **Corrected Dataset:** The source dataset after approved label completions and corrections.
+- **Balanced Dataset:** The labelized dataset plus class weights, sampling metadata, and optional approved additions for underrepresented classes.
+- **Augmented Dataset:** The corrected dataset plus optional approved synthetic samples and adaptations.
+- **Improvement Delta:** The comparison between baseline evaluation and final labelized or balanced evaluation.
+- **Quality Report:** A report containing Adaption Labs evaluation metrics, deterministic distribution metrics, label issue summary, balancing plan, and remaining manual review items.
+- **Export Bundle:** A downloadable clean labeled dataset package and report, optionally in Hugging Face-compatible format.
 
 ### 3.2 Roles
 
-- **ML Engineer:** Primary user. Uploads a dataset, defines the training intent, reviews the quality report, approves synthetic generation, and exports the improved dataset.
+- **ML Engineer:** Primary user. Uploads a partially labeled image dataset, defines the training intent, reviews the quality report, approves label completions and corrections, reviews the balancing plan, and exports the clean labeled dataset.
 - **Researcher:** Uses DataForge to inspect experimental data and compare dataset variants.
 - **Data Lead:** Reviews labels, bias flags, and repair plans before approving dataset changes.
 - **Reviewer / Judge:** Opens the live dashboard and watches the pipeline progress. For the hackathon, this can be a public dashboard URL.
@@ -115,16 +128,16 @@ The winning demo should show a deliberately imbalanced image dataset, run evalua
 ### 3.3 Phase 1: Entry, Upload, and Dataset Normalization
 
 1. **Landing Page:** User lands on a technical dashboard-style page with the promise: "Evaluate and repair your training dataset before you train."
-2. **Dataset Upload:** User uploads a CSV, JSON, or ZIP. For the hackathon MVP, the most important path is a ZIP of images arranged by class folder or an image manifest CSV.
+2. **Dataset Upload:** User uploads a ZIP of images, an image manifest CSV/JSON, or both. For the hackathon MVP, the most important path is a partially labeled ZIP of images arranged by class folder plus unlabeled or unknown folders.
 3. **File Validation:** The app validates file type, file size, and basic structure. MVP file size should be capped to avoid timeouts and excessive memory usage.
-4. **Dataset Parsing:** The app extracts labels, sample count, class distribution, and previewable records. For image datasets, it shows thumbnails grouped by class.
+4. **Dataset Parsing:** The app extracts existing labels, missing-label count, sample count, class distribution, and previewable records. For image datasets, it shows thumbnails grouped by current label, unlabeled status, and suspected issue state.
 5. **Convex Dataset Record:** The app creates a dataset project in Convex with status `uploaded` and logs the first event.
 6. **Preview Pane:** The UI displays total samples, detected classes, first rows or thumbnails, and any obvious parsing warnings.
 
 Edge cases:
 
 - **Unsupported format:** Reject with clear accepted formats.
-- **Missing labels:** Ask for a manifest or infer folder names if possible.
+- **Missing labels:** Keep samples in the dataset as `unlabeled` and route them into the label completion queue.
 - **No class column:** Let the user select a label column for CSV/JSON datasets.
 - **Oversized dataset:** Ask the user to upload a smaller demo subset.
 - **Corrupt ZIP or broken image:** Skip broken samples, log warnings, and continue if enough valid samples remain.
@@ -140,15 +153,15 @@ Edge cases:
 
 Important MVP constraint:
 
-The training intent should shape the explanation and synthetic prompts, but Adaption Labs evaluation should remain the objective metric source. GPT-5.5 should not invent final quality scores when an evaluation API metric exists.
+The training intent should shape labelization, balancing recommendations, and optional addition prompts, but Adaption Labs evaluation should remain the objective metric source. GPT-5.5 should not invent final quality scores when an evaluation API metric exists.
 
 ### 3.5 Phase 3: Baseline Evaluation and Quality Report
 
 1. **Baseline Ingest:** The backend sends the source dataset or dataset metadata to Adaption Labs for registration or evaluation, depending on the available API shape.
 2. **Baseline Evaluate:** Adaption Labs returns dataset quality metrics. These may include completeness, balance, consistency, coverage, duplication, label confidence, or other provider-specific scores.
 3. **Convex Stage Updates:** The app writes stage transitions to Convex: ingest queued, ingest running, ingest complete, evaluate running, evaluate complete.
-4. **GPT-5.5 Report Generation:** GPT-5.5 receives the training intent, dataset summary, class distribution, sample previews, and Adaption Labs metrics. It returns a structured report.
-5. **Quality Report UI:** The frontend renders score cards, class distribution charts, gap list, bias flags, label quality warnings, and ranked repair actions.
+4. **GPT-5.5 Report Generation:** GPT-5.5 receives the training intent, dataset summary, class distribution, sample previews, inferred or provider-supplied label-confidence signals, and Adaption Labs metrics. It returns a structured report.
+5. **Quality Report UI:** The frontend renders score cards, class distribution charts, gap list, bias flags, label quality warnings, suspected mislabels, and ranked repair actions.
 
 The quality report should separate measured metrics from LLM interpretation:
 
@@ -161,63 +174,61 @@ Edge cases:
 - **Adaption Labs API unavailable:** Use a thin mock adapter with clearly labeled demo metrics and keep the UI functional.
 - **Evaluation returns partial metrics:** Display available metrics and have GPT-5.5 explain only what is supported.
 - **GPT-5.5 JSON invalid:** Retry once with a repair prompt, then fall back to a minimal deterministic report.
-- **No gaps detected:** Show a healthy dataset state and recommend export or targeted manual review instead of forcing synthetic generation.
+- **No gaps detected:** Show a healthy dataset state and recommend export or targeted manual review instead of forcing optional generation.
 
-### 3.6 Phase 4: Repair Plan and Synthetic Generation
+### 3.6 Phase 4: Label Completion, Relabeling, and Balancing Plan
 
-1. **Gap Selection:** DataForge identifies underrepresented classes or scenarios from the quality report.
-2. **Repair Plan Creation:** GPT-5.5 produces a repair plan with target class, current count, recommended count, generation count, prompt, and expected impact.
-3. **Prompt Review:** User can review and edit the Fal prompt before generation. This is important because synthetic data quality depends heavily on prompt specificity.
-4. **Fal Job Creation:** The backend calls Fal to generate images for each approved gap job. MVP should cap generation count to control cost and latency.
-5. **Synthetic Gallery:** Generated images appear grouped by class with a "Synthetic" badge.
-6. **Sample Registration:** Each synthetic image is stored with its label, prompt, provider, and job metadata.
-7. **Convex Events:** Every job state change is logged live: queued, running, image generated, failed, complete.
-
-Prompt principles for synthetic images:
-
-- Match the training intent and class label.
-- Generate diverse conditions, angles, lighting, backgrounds, and compositions.
-- Avoid text overlays, watermarks, logos, or unrealistic artifacts.
-- Keep images domain-specific rather than aesthetic.
-- Prefer varied but plausible examples over near-duplicates.
+1. **Missing Label Queue:** DataForge identifies unlabeled samples and proposes labels from the allowed class taxonomy. For image classification, this can be shown as "current label: unlabeled, suggested label: cat" with confidence and rationale.
+2. **Label Issue Selection:** DataForge identifies likely mislabeled samples from Adaption Labs signals, deterministic checks, and GPT-5.5 interpretation. For image classification, this can be shown as "current label: dog, suggested label: cat" with confidence and rationale.
+3. **Human Review:** User approves, rejects, or edits suggested label completions and corrections. MVP can support one-click accept/reject for obvious issues instead of building a full annotation suite.
+4. **Labelized Manifest Update:** Approved label changes update the dataset manifest and preserve original label, final label, reviewer action, timestamp, confidence source, and reason.
+5. **Class Balance Analysis:** DataForge recalculates class counts after labelization and identifies underrepresented classes.
+6. **Balancing Plan Creation:** DataForge produces a balancing plan with current count, target count, recommended class weight, recommended sampling strategy, and optional sample additions.
+7. **Optional Addition Review:** If the team uses Fal or external collection, user can review optional prompts or collection recommendations. This is not required for the core MVP.
+8. **Convex Events:** Every label review and balancing state change is logged live: proposed, approved, rejected, manual_review, balanced, failed, complete.
 
 Edge cases:
 
-- **Fal generation off-domain:** Let user edit the prompt and regenerate.
-- **Generated image quality poor:** Allow rejection or exclude from augmented dataset.
-- **Too many requested images:** Cap count and explain the cap.
-- **Class prompt ambiguous:** Ask GPT-5.5 to clarify or require user input.
+- **Unlabeled sample ambiguous:** Mark it for manual review instead of forcing a guessed label.
+- **Balancing would overfit minority classes:** Prefer class weights or sampling metadata over aggressive duplication.
+- **Optional generated image quality poor:** Allow rejection or exclude from the balanced dataset.
+- **Too many requested additions:** Cap count and explain the cap.
+- **Low-confidence label suggestion:** Keep it as a review warning and do not auto-apply the correction.
+- **No obvious corrected label:** Mark the sample for manual review instead of forcing a guessed label.
 
 ### 3.7 Phase 5: Re-Ingest, Adapt, and Re-Evaluate
 
-1. **Augmented Dataset Assembly:** DataForge combines source samples with approved synthetic samples.
-2. **Adaption Labs Re-Ingest:** The augmented dataset is sent back into the Adaption Labs pipeline.
-3. **Adapt Stage:** Adaption Labs applies supported transformations, such as normalization, deduplication, balancing, validation, or provider-specific adaptation.
-4. **Second Evaluate Stage:** Adaption Labs evaluates the augmented dataset.
-5. **Improvement Delta:** The frontend compares baseline and post-augmentation evaluation snapshots.
-6. **Narrative Summary:** GPT-5.5 summarizes what improved, what remains weak, and what should happen next.
+1. **Labelized Dataset Assembly:** DataForge applies approved label completions and corrections to the manifest while preserving original labels for provenance.
+2. **Balanced Dataset Assembly:** DataForge attaches class weights, sampling metadata, and optional approved additions.
+3. **Adaption Labs Re-Ingest:** The clean labelized dataset is sent back into the Adaption Labs pipeline.
+4. **Adapt Stage:** Adaption Labs applies supported transformations, such as normalization, deduplication, balancing, validation, or provider-specific adaptation.
+5. **Second Evaluate Stage:** Adaption Labs evaluates the clean labelized and balanced dataset.
+6. **Improvement Delta:** The frontend compares baseline and post-repair evaluation snapshots.
+7. **Narrative Summary:** GPT-5.5 summarizes what improved, what remains weak, and what should happen next.
 
 The second evaluation is the most important proof point. The UI should make this obvious:
 
-- Baseline quality score versus augmented quality score.
-- Baseline class distribution versus augmented class distribution.
-- Baseline imbalance severity versus augmented imbalance severity.
+- Baseline quality score versus clean labeled dataset quality score.
+- Baseline class distribution versus balanced class distribution or class weights.
+- Baseline missing-label count versus final missing-label count.
+- Baseline label issue count versus remaining label issue count.
+- Baseline imbalance severity versus final imbalance severity.
 - Remaining recommended actions.
-- Synthetic sample count and affected classes.
+- Newly labeled count, corrected label count, and affected classes.
 
 Edge cases:
 
-- **Score does not improve:** Show the honest result and explain likely reasons, such as poor synthetic diversity or metric not sensitive to class balance.
-- **Evaluation worsens:** Flag the synthetic batch as harmful and let the user exclude it.
+- **Score does not improve:** Show the honest result and explain likely reasons, such as ambiguous labels, unresolved manual review items, or metrics not sensitive to class balance.
+- **Evaluation worsens:** Flag the label changes or additions as harmful and let the user exclude them.
 - **Evaluation API only supports metadata:** Use deterministic distribution metrics as supplemental, but label them separately from Adaption Labs metrics.
 
 ### 3.8 Phase 6: Realtime Dashboard and Review
 
-1. **Pipeline Stepper:** Dashboard shows upload, ingest, evaluate, augment, re-evaluate, and export states.
-2. **Metric Cards:** Total samples, original samples, synthetic samples, class count, quality score, imbalance score, label issues.
-3. **Distribution Charts:** Recharts shows original versus augmented class distribution.
+1. **Pipeline Stepper:** Dashboard shows upload, ingest, evaluate, labelize, balance, re-evaluate, and export states.
+2. **Metric Cards:** Total samples, unlabeled samples, newly labeled samples, corrected labels, class count, quality score, imbalance score, label issues.
+3. **Distribution Charts:** Recharts shows original versus final labeled distribution and recommended class weights.
 4. **Live Event Log:** Convex powers event streaming without refresh.
-5. **Dataset Explorer:** User filters samples by class, source, label issue, or synthetic status.
+5. **Dataset Explorer:** User filters samples by class, source, label status, label issue, or optional synthetic status.
 6. **Result Summary:** Final panel explains the improvement delta and recommended next step.
 
 Dashboard principle:
@@ -226,17 +237,19 @@ The dashboard should feel like an ML pipeline control room. Avoid a generic chat
 
 ### 3.9 Phase 7: Export and Handoff
 
-1. **Export Preview:** User sees what will be included: original samples, accepted synthetic samples, manifest, quality report, and evaluation snapshots.
+1. **Export Preview:** User sees what will be included: original samples, final labels, corrected labels, newly labeled samples, balancing metadata, manifest, quality report, and evaluation snapshots.
 2. **Download ZIP:** MVP can export a ZIP if time permits. Otherwise, show an export manifest and mark this as a stretch feature.
-3. **Hugging Face Format:** Stretch export includes `README.md` data card, manifest, split files, and metadata fields for synthetic samples.
-4. **Data Card Generation:** GPT-5.5 can generate a short data card summarizing dataset purpose, classes, synthetic data usage, caveats, and evaluation results.
+3. **Hugging Face Format:** Stretch export includes `README.md` data card, manifest, split files, label provenance fields, and optional metadata fields for synthetic samples.
+4. **Data Card Generation:** GPT-5.5 can generate a short data card summarizing dataset purpose, classes, labelization decisions, balancing metadata, caveats, and evaluation results.
 
 Export metadata should preserve provenance:
 
 - Source: original or synthetic.
-- Synthetic provider: Fal.
-- Prompt used.
-- Generation job ID.
+- Original label and corrected label, if changed.
+- Missing-label completion provenance, if newly labeled.
+- Class weight or sampling metadata, if used for balancing.
+- Label correction confidence and review status.
+- Optional synthetic provider, prompt used, and generation job ID.
 - Target class.
 - Approval state.
 - Evaluation snapshot ID.
@@ -252,13 +265,13 @@ DataForge should use a lean, hackathon-friendly architecture with one web app, C
 - **Styling:** Tailwind CSS with a dark, technical UI.
 - **Components:** shadcn/ui or lightweight custom components.
 - **Charts:** Recharts for class distribution, score trends, and before/after comparisons.
-- **Pipeline Visualization:** React Flow for a fixed, non-editable pipeline hero showing Upload -> Evaluate -> Analyze Gaps -> Generate Synthetic Data -> Re-evaluate -> Export.
+- **Pipeline Visualization:** React Flow for a fixed, non-editable pipeline hero showing Upload -> Evaluate -> Labelize -> Balance -> Re-evaluate -> Export.
 - **Upload:** react-dropzone for file upload.
 - **Parsing:** Papa Parse for CSV, native JSON parsing, JSZip for ZIP, image metadata extraction where needed.
-- **Realtime Backend:** Convex for datasets, stage updates, events, gap jobs, synthetic samples, and dashboard subscriptions.
+- **Realtime Backend:** Convex for datasets, stage updates, events, missing labels, label issues, balancing plans, optional additions, and dashboard subscriptions.
 - **LLM Analysis:** OpenAI GPT-5.5 using structured JSON output through the Responses API or equivalent available endpoint.
 - **Evaluation Platform:** Adaption Labs SDK/API for ingest, adapt, evaluate, and quality metrics.
-- **Synthetic Image Generation:** Fal for generated image samples.
+- **Synthetic Image Generation:** Fal as an optional stretch path for underrepresented classes after labelization and balancing decisions.
 - **Storage:** Vercel Blob, Cloudflare R2, Supabase Storage, or Convex file storage for uploaded datasets and generated images.
 - **Validation:** Zod for all provider outputs, request payloads, and structured report schemas.
 - **Deployment:** Vercel.
@@ -266,13 +279,14 @@ DataForge should use a lean, hackathon-friendly architecture with one web app, C
 ### 4.2 Application Surfaces
 
 - **`/` Home / Upload:** Dataset upload, training intent, task type, and analysis CTA.
-- **`/datasets/:datasetId` Dashboard:** Live pipeline status, report, charts, synthetic gallery, and dataset explorer.
-- **Dashboard Pipeline Hero:** Fixed React Flow graph with six nodes and five edges. Each node reflects Convex-backed status and can open a detail panel, but users cannot create, move, delete, or reconnect nodes in the MVP.
+- **`/datasets/:datasetId` Dashboard:** Live pipeline status, report, label completion queue, relabeling queue, balancing plan, charts, and dataset explorer.
+- **Dashboard Pipeline Hero:** Fixed React Flow graph with seven nodes and six edges. Each node reflects Convex-backed status and can open a detail panel, but users cannot create, move, delete, or reconnect nodes in the MVP.
 - **`/datasets/:datasetId/export` Export View:** Optional stretch route for manifest, data card, and ZIP export.
 - **Server Route or Action: `createDataset`:** Creates Convex dataset record and stores upload metadata.
-- **Server Route or Action: `analyzeDataset`:** Runs parsing, baseline evaluation, GPT-5.5 report, and stage updates.
-- **Server Route or Action: `generateSyntheticSamples`:** Creates Fal jobs and writes generated sample records.
-- **Server Route or Action: `reevaluateDataset`:** Sends augmented dataset to Adaption Labs and writes improvement metrics.
+- **Server Route or Action: `analyzeDataset`:** Runs parsing, Adaption Labs baseline evaluation, missing-label detection, label issue detection, GPT-5.5 report, and stage updates.
+- **Server Route or Action: `applyLabelDecisions`:** Applies approved label completions and corrections to the dataset manifest and sample records.
+- **Server Route or Action: `balanceDataset`:** Creates class weights, sampling metadata, and optional addition recommendations.
+- **Server Route or Action: `reevaluateDataset`:** Sends the clean labelized dataset to Adaption Labs and writes improvement metrics.
 
 For the hackathon, server actions can be simple wrappers that call Convex mutations and provider APIs. Keep provider-specific code isolated behind adapter functions.
 
@@ -283,7 +297,7 @@ For the hackathon, server actions can be simple wrappers that call Convex mutati
 Represents one dataset project.
 
 - `name` string
-- `status` enum: `uploaded`, `analyzing`, `evaluated`, `augmenting`, `reevaluating`, `complete`, `error`
+- `status` enum: `uploaded`, `analyzing`, `evaluated`, `label_review`, `balancing`, `reevaluating`, `complete`, `error`
 - `task_type` enum: `classification`, `object_detection`, `segmentation`, `regression`, `unknown`
 - `training_intent` string
 - `format` enum: `csv`, `json`, `zip_images`, `image_manifest`
@@ -300,20 +314,56 @@ Stores previewable metadata for samples. For MVP, do not store every large file 
 - `dataset_id` id
 - `sample_key` string
 - `label` optional string
+- `original_label` optional string
+- `corrected_label` optional string
+- `final_label` optional string
+- `label_status` optional enum: `unlabeled`, `suggested`, `newly_labeled`, `corrected`, `accepted`, `rejected`, `manual_review`
 - `image_url` optional string
 - `row_preview` optional any
-- `source` enum: `original`, `synthetic`
+- `source` enum: `original`, `synthetic`, `external`
 - `provider` optional string
 - `prompt` optional string
 - `quality_flags` optional array
 - `created_at` number
+
+#### `label_issues`
+
+Tracks missing labels, suspected mislabels, and user review decisions.
+
+- `dataset_id` id
+- `sample_id` optional id
+- `sample_key` string
+- `issue_type` enum: `missing_label`, `wrong_label`, `ambiguous`, `imbalance_related`
+- `current_label` optional string
+- `suggested_label` optional string
+- `confidence` optional number
+- `reason` string
+- `status` enum: `open`, `accepted`, `rejected`, `manual_review`
+- `source` enum: `adaption`, `gpt`, `deterministic`, `user`
+- `reviewed_at` optional number
+- `created_at` number
+
+#### `balancing_plans`
+
+Tracks class balance recommendations after labelization.
+
+- `dataset_id` id
+- `class_name` string
+- `current_count` number
+- `target_count` optional number
+- `recommended_weight` optional number
+- `sampling_strategy` enum: `keep`, `downsample`, `upsample`, `collect_more`, `optional_generate`
+- `reason` string
+- `status` enum: `proposed`, `accepted`, `rejected`, `applied`
+- `created_at` number
+- `updated_at` number
 
 #### `evaluation_snapshots`
 
 Stores Adaption Labs metrics and derived metrics for each dataset version.
 
 - `dataset_id` id
-- `version` enum: `baseline`, `augmented`
+- `version` enum: `baseline`, `labelized`, `balanced`, `augmented`
 - `provider` string
 - `quality_score` optional number
 - `balance_score` optional number
@@ -342,7 +392,7 @@ Stores the GPT-5.5 structured analysis.
 Tracks each visible pipeline step.
 
 - `dataset_id` id
-- `stage` enum: `upload`, `ingest`, `evaluate`, `analyze`, `augment`, `adapt`, `reevaluate`, `export`
+- `stage` enum: `upload`, `ingest`, `evaluate`, `labelize`, `balance`, `adapt`, `reevaluate`, `export`
 - `status` enum: `queued`, `running`, `complete`, `error`
 - `progress` optional number
 - `metrics` optional any
@@ -352,7 +402,7 @@ Tracks each visible pipeline step.
 
 #### `gap_jobs`
 
-Tracks proposed and executed synthetic generation jobs.
+Tracks optional proposed additions for underrepresented classes. For the MVP this may represent sampling or collection recommendations rather than live generation.
 
 - `dataset_id` id
 - `class_name` string
@@ -385,13 +435,16 @@ The pipeline should be explicit, even if some stages are mocked during the demo.
 2. `ingest_running`: Adaption Labs ingest started.
 3. `baseline_evaluate_running`: Baseline evaluation requested.
 4. `baseline_evaluated`: Baseline metrics stored.
-5. `analysis_running`: GPT-5.5 report generation running.
-6. `analysis_ready`: Quality report and gap jobs available.
-7. `augmenting`: Fal jobs running for approved gaps.
-8. `augmented`: Synthetic samples stored and attached.
-9. `reevaluating`: Augmented dataset sent back to Adaption Labs.
-10. `complete`: Improvement delta available.
-11. `error`: Terminal failure with actionable message.
+5. `labelize_running`: missing labels and likely wrong labels are being identified.
+6. `label_review_ready`: suggested label completions and corrections are available for user review.
+7. `labels_applied`: approved label decisions have been applied to the manifest.
+8. `balance_running`: class distribution and weightage recommendations are being calculated.
+9. `balance_ready`: class weights, sampling recommendations, and optional additions are available.
+10. `analysis_running`: GPT-5.5 report generation running.
+11. `analysis_ready`: Quality report and balancing plan available.
+12. `reevaluating`: clean labelized dataset sent back to Adaption Labs.
+13. `complete`: Improvement delta available.
+14. `error`: Terminal failure with actionable message.
 
 Every state transition should write both a `pipeline_stages` update and an `events` row. This makes the dashboard feel alive and makes debugging easier.
 
@@ -399,12 +452,12 @@ React Flow node mapping:
 
 - **Upload:** dataset parsed and previewed.
 - **Evaluate:** Adaption Labs baseline quality evaluation.
-- **Analyze Gaps:** GPT-5.5 report and repair plan.
-- **Generate Synthetic Data:** Fal generation jobs for underrepresented classes or scenarios.
-- **Re-evaluate:** Adaption Labs augmented dataset evaluation.
+- **Labelize:** missing labels, likely mislabeled samples, and suggested final labels.
+- **Balance:** class weights, sampling recommendations, and optional additions.
+- **Re-evaluate:** Adaption Labs clean labeled dataset evaluation.
 - **Export:** downloadable manifest or final dataset package.
 
-React Flow is only a visualization layer. Convex remains the source of truth for node status, stage metrics, logs, and generated sample records. Recharts remains responsible for quantitative charts.
+React Flow is only a visualization layer. Convex remains the source of truth for node status, stage metrics, logs, missing labels, label issues, balancing plans, and optional generated sample records. Recharts remains responsible for quantitative charts.
 
 ### 4.5 Provider Adapter Architecture
 
@@ -412,19 +465,27 @@ Use thin adapters so the rest of the app does not depend on exact provider signa
 
 Recommended adapters:
 
-- `adaptionClient.ingest(dataset)`
-- `adaptionClient.adapt(datasetId)`
-- `adaptionClient.evaluate(datasetIdOrPayload)`
+- `adaptionClient.createDataset(manifest)`
+- `adaptionClient.uploadManifest(uploadInstructions, file)`
+- `adaptionClient.runDataset(datasetId, columnMapping, options)`
+- `adaptionClient.getStatus(datasetId)`
+- `adaptionClient.getEvaluation(datasetId)`
+- `adaptionClient.downloadDataset(datasetId)`
+- `labelAuditClient.detectMissingAndWrongLabels(datasetSummary, samplePreviews)`
+- `datasetRepairClient.applyLabelDecisions(datasetId, approvedDecisions)`
+- `balanceClient.createBalancingPlan(labelizedDataset)`
 - `openaiClient.generateQualityReport(input)`
-- `openaiClient.generateFalPrompt(input)`
-- `falClient.generateImages(prompt, count)`
+- `openaiClient.generateLabelAndBalanceReport(input)`
+- `openaiClient.generateOptionalAdditionPrompt(input)`
+- `falClient.generateImages(prompt, count)` optional stretch
 - `storageClient.putFile(file)`
 - `storageClient.putGeneratedImage(urlOrBuffer)`
 
 Adaption Labs should have a demo-safe fallback adapter:
 
-- If real API access works, use it.
+- If real API access works, use it for dataset creation, bounded runs, evaluation polling, and final evaluation snapshots.
 - If endpoint signatures are unclear, use deterministic local metrics plus a clearly named `mockAdaptionClient` for the UI.
+- If API keys are missing or evaluation times out, preserve the live dashboard and show a clearly labeled fallback snapshot.
 - If sponsor judges ask, be transparent about which parts are live and which are mocked.
 
 ### 4.6 GPT-5.5 Analysis Contract
@@ -434,7 +495,9 @@ GPT-5.5 should receive:
 - Training intent.
 - Task type.
 - Class distribution.
+- Missing-label count and unlabeled sample previews.
 - Dataset sample previews.
+- Candidate label issues and label-confidence signals.
 - Adaption Labs baseline metrics.
 - Any deterministic parser warnings.
 
@@ -444,13 +507,16 @@ GPT-5.5 should return strict JSON:
 - Gaps.
 - Bias flags.
 - Label quality issues.
+- Suggested label corrections with confidence and rationale.
+- Suggested label completions with confidence and rationale.
+- Balancing plan summary with class weights or sampling recommendations.
 - Recommended actions.
-- Fal prompt suggestions.
+- Optional addition or generation suggestions.
 - Expected impact.
 
 Key rule:
 
-GPT-5.5 can explain and recommend, but it should not fabricate provider metrics. If it estimates an impact, label it as estimated.
+GPT-5.5 can explain and recommend, but it should not fabricate provider metrics. If it estimates an impact or label confidence, label it as estimated. Suggested label corrections should require user approval before changing the dataset.
 
 ### 4.7 Adaption Labs Evaluation Contract
 
@@ -458,20 +524,31 @@ Adaption Labs is the primary sponsor target and the most important integration. 
 
 Required logical operations:
 
-- **Ingest:** Register or validate the source dataset.
-- **Evaluate baseline:** Produce quality metrics for the source dataset.
-- **Adapt:** Apply supported transformations or prepare the augmented dataset.
-- **Evaluate augmented:** Produce quality metrics after synthetic additions.
+- **Create dataset:** Create an Adaption dataset from a normalized manifest. The REST endpoint `POST /api/v1/datasets` supports file sources with `csv`, `json`, `jsonl`, or `parquet`, returning `dataset_id`, `status`, and presigned upload instructions.
+- **Upload manifest:** Upload the manifest file to the presigned URL when using the file source flow.
+- **Run with column mapping:** Map DataForge manifest columns into Adaption roles such as `prompt`, `completion`, and `context`. For image labeling, use a fixed labeling instruction as `prompt`, label or final label as `completion`, and image URL/current label/candidate labels/metadata as `context`.
+- **Evaluate baseline:** Produce quality metrics for the source dataset, including label consistency, completeness, or quality where supported.
+- **Evaluate labelized/balanced dataset:** Produce quality metrics after approved label completions, label corrections, and balancing metadata.
+- **Export/download:** Download the resulting dataset or preserve the Adaption snapshot URL/metadata in the DataForge export bundle.
+
+Adaption Labs documentation notes:
+
+- `datasets.get_evaluation(dataset_id)` is the quality-focused call. Evaluation status can be `pending`, `running`, `succeeded`, `failed`, or `skipped`.
+- `quality` may include `score_before`, `score_after`, letter grades, `improvement_percent`, and `percentile_after` when evaluation succeeds.
+- `datasets.get(dataset_id)` may include `evaluation_summary`, useful for dashboard summaries.
+- `get_status` is for ingestion or run progress and should not be treated as the quality source.
+- Use `job_specification.max_rows` for bounded live demos and `estimate=True` for cost or duration estimates before full runs.
+- Universal prompts are a web-app concept; for SDK-style runs, emulate them by adding a fixed prompt/instruction column to every manifest row.
 
 The UI should expose these operations in the language of the product, even if the exact API uses different names.
 
 Important product rule:
 
-Do not require model training to show improvement. The improvement proof is the difference between baseline and augmented evaluation snapshots.
+Do not require model training to show improvement. The improvement proof is the difference between baseline and labelized or balanced Adaption evaluation snapshots.
 
-### 4.8 Fal Synthetic Generation Contract
+### 4.8 Optional Fal Synthetic Generation Contract
 
-Fal should generate only approved samples for specific gap jobs.
+Fal is optional for the aligned MVP. The core output is a clean labelized dataset and report. If the team uses Fal, it should generate only approved samples for specific underrepresented classes after Adaption Labs evaluation and balancing analysis show a concrete need.
 
 Inputs:
 
@@ -499,6 +576,10 @@ Generated samples should be displayed before inclusion if time allows. If the MV
 - Strip EXIF metadata from images if feasible.
 - Limit upload size and sample count.
 - Do not train models on uploaded data.
+- Do not automatically overwrite labels without explicit user approval.
+- Preserve original labels and correction provenance for every relabeled sample.
+- Preserve unlabeled samples as `manual_review` if no confident label exists.
+- Do not present class weights or sampling metadata as new real images.
 - Do not claim synthetic data is equivalent to real-world collection.
 - Mark all generated samples as synthetic.
 - Preserve prompts and provenance for every synthetic sample.
@@ -514,16 +595,21 @@ Track for every dataset run:
 - Provider calls.
 - Stage timings.
 - Baseline evaluation metrics.
-- Augmented evaluation metrics.
-- Number of synthetic samples generated.
-- Fal job IDs.
+- Labelized and balanced evaluation metrics.
+- Missing-label count before and after.
+- Number of suspected label issues.
+- Number of accepted, rejected, newly labeled, corrected, and manually reviewed label decisions.
+- Class weights and sampling recommendations.
+- Optional number of synthetic samples generated and Fal job IDs.
 - Error messages.
 
 Hackathon cost controls:
 
 - Limit preview analysis to first 100 rows or 12 to 24 images.
-- Limit synthetic generation to 10 images per class by default.
-- Cap total generated images per dataset.
+- Use Adaption Labs `max_rows` for bounded pilot runs where applicable.
+- Use Adaption Labs `estimate=True` before larger runs where applicable.
+- Limit optional synthetic generation to 10 images per class by default.
+- Cap total optional generated images per dataset.
 - Cache demo results for the prepared dataset.
 - Keep a precomputed fallback run in Convex in case live APIs are slow.
 
@@ -534,15 +620,17 @@ Hackathon cost controls:
 - Next.js on Vercel.
 - Convex realtime backend.
 - OpenAI GPT-5.5 structured quality report.
-- Adaption Labs evaluation API for baseline and augmented scores.
-- Fal image generation for one or two underrepresented classes.
-- Recharts dashboard for before/after class distribution and quality delta.
-- Pre-prepared demo dataset.
+- Adaption Labs dataset creation, bounded run, evaluation polling, and baseline/final quality snapshots.
+- AI-assisted label completion and relabeling queue for partially labeled image classification datasets.
+- Class balancing plan with weights, sampling recommendations, and visible before/after distribution.
+- Recharts dashboard for before/after class distribution, missing-label delta, label issue delta, and quality delta.
+- Pre-prepared demo dataset with imbalance, missing labels, and known mislabeled examples.
 
 **Stretch stack:**
 
 - Full CSV/JSON support beyond image classification.
-- Automated annotation suggestions.
+- Live Fal image generation for one or two underrepresented classes.
+- Full annotation workspace for drawing boxes, masks, and bulk label editing.
 - Manual accept/reject review for each synthetic image.
 - Hugging Face export bundle.
 - Data card generation.
@@ -552,15 +640,18 @@ Hackathon cost controls:
 ### 4.12 Implementation Constraints
 
 1. **Do not train a model during the hackathon demo:** It adds time, cost, and uncertainty. Use Adaption Labs evaluation API to show quality improvement.
-2. **Do not over-support dataset types:** Image classification is the best MVP path because Fal can visibly repair gaps.
+2. **Do not over-support dataset types:** Image classification is the best MVP path because missing labels, wrong labels, and class imbalance are easy to understand visually.
 3. **Do not hide mocked provider behavior:** If any adapter is mocked, label it internally and be ready to explain the fallback.
 4. **Do not let GPT-5.5 invent objective metrics:** Provider metrics and deterministic parser metrics must remain separate from LLM interpretation.
-5. **Do not generate synthetic data without a measured gap:** Every generation job should be tied to a class, scenario, or quality issue.
-6. **Do not treat synthetic samples as real samples:** Always preserve provenance and display a synthetic badge.
-7. **Do not block the dashboard on long-running calls:** Write stage updates early and often so the UI remains alive.
-8. **Do not use user-uploaded secrets or tokens in provider prompts:** Keep all credentials server-side and minimal.
-9. **Do not make accuracy claims:** Claim dataset quality, balance, coverage, or consistency improvement only if supported by evaluation metrics.
-10. **Do not attempt full MLOps:** The product ends at dataset evaluation, repair, and export.
+5. **Do not auto-apply label decisions:** AI can suggest labels and relabels, but the user must approve them before the manifest changes.
+6. **Do not erase original labels:** Labelized samples must preserve original label, final label, confidence, reason, and review status.
+7. **Do not fake balancing:** Class weights and sampling recommendations must be labeled as balancing metadata, not new real samples.
+8. **Do not generate synthetic data without a measured gap:** Optional generation jobs should be tied to a class, scenario, or quality issue.
+9. **Do not treat synthetic samples as real samples:** Always preserve provenance and display a synthetic badge.
+10. **Do not block the dashboard on long-running calls:** Write stage updates early and often so the UI remains alive.
+11. **Do not use user-uploaded secrets or tokens in provider prompts:** Keep all credentials server-side and minimal.
+12. **Do not make accuracy claims:** Claim dataset quality, labeling completeness, balance, coverage, or consistency improvement only if supported by evaluation metrics.
+13. **Do not attempt full MLOps:** The product ends at dataset evaluation, labelization, balancing, report generation, and export.
 
 ### 4.13 Demo Dataset Recommendation
 
@@ -576,16 +667,19 @@ Recommended demo:
 - Class 4: foxes, 15 images.
 - Class 5: owls, 10 images.
 - Scenario gap: night-time or low-light wildlife examples, 0 to 5 images.
+- Missing-label seed: 15 to 30 images in an unlabeled or unknown folder.
+- Label issue seed: 5 to 10 intentionally mislabeled images, such as cats in the dog folder, foxes labeled as dogs, or owls labeled as birds.
 
 Expected demo result:
 
-- Baseline evaluation flags foxes and owls as underrepresented and identifies low-light wildlife as a missing scenario.
-- GPT-5.5 recommends targeted synthetic generation with varied lighting, angles, environments, and camera-trap-style views.
-- Fal generates 10 to 20 images for foxes, owls, or low-light wildlife examples.
-- Augmented evaluation improves balance or quality metrics.
+- Baseline evaluation flags missing labels, likely wrong labels, fox and owl underrepresentation, and low-light wildlife gaps.
+- GPT-5.5 explains why the suspected labels are risky, suggests labels and corrected labels for review, and summarizes the balancing plan.
+- User approves obvious completions and corrections, such as labeling an unknown owl image and moving a cat image out of the dog class.
+- DataForge applies class weights or sampling recommendations for foxes, owls, and low-light wildlife.
+- Final Adaption Labs evaluation improves labeling completeness, balance, consistency, or quality metrics.
 - Convex dashboard shows the full sequence live.
 
-This dataset is ideal because the problem is intuitive and safe. Judges can understand class imbalance immediately, synthetic image repair is visually obvious, and the before/after chart should show clear improvement. It also avoids the ethical, privacy, and validity risks of medical-image demos while preserving a serious data-quality story.
+This dataset is ideal because the problem is intuitive and safe. Judges can understand class imbalance, missing labels, and wrong labels immediately, and the before/after chart should show clear improvement. It also avoids the ethical, privacy, and validity risks of medical-image demos while preserving a serious data-quality story.
 
 ### 4.14 Agent Skill Usage During Implementation
 
@@ -594,6 +688,7 @@ Use skills selectively. The goal is to constrain execution and ship the smallest
 Recommended skills:
 
 - **`karpathy-guidelines`:** Use before implementation to keep scope surgical, define verifiable success criteria, and avoid overbuilding.
+- **`adaptionlabs`:** Use for Adaption Labs dataset creation, upload, run configuration, evaluation polling, large-dataset controls, and fallback adapter design.
 - **`nextjs`:** Use for Next.js App Router, server actions or route handlers, Vercel deployment, and app structure.
 - **`ai-sdk-6` or `ai-sdk`:** Use if the team adopts Vercel AI SDK for OpenAI/GPT-5.5 structured outputs and provider boundaries.
 - **`zod`:** Use for validating dataset metadata, GPT-5.5 quality report JSON, provider adapter responses, and Convex-facing payloads.
@@ -602,9 +697,9 @@ Recommended skills:
 - **`motion`:** Use sparingly for pipeline stage transitions, score deltas, and generated sample reveals.
 - **`api-design`:** Use when shaping provider adapter contracts and server action or route boundaries.
 - **`ai-agents-architect`:** Use for the evaluate -> explain -> repair -> re-evaluate loop and provider orchestration.
-- **`prompt-engineer`:** Use for GPT-5.5 quality report prompts and Fal synthetic image prompt templates.
+- **`prompt-engineer`:** Use for GPT-5.5 labelization report prompts and optional synthetic image prompt templates.
 - **`impeccable` or `web-design-guidelines`:** Use for final UI polish, accessibility, visual hierarchy, and demo-readiness.
 
 Implementation rule:
 
-The core build remains: animal image dataset upload, Convex-backed live pipeline, Adaption Labs evaluation, GPT-5.5 gap report, Fal synthetic samples, and before/after quality visualization.
+The core build remains: partially labeled animal image dataset upload, Convex-backed live pipeline, Adaption Labs evaluation, GPT-5.5 label and balance report, user-approved label completions and corrections, class balancing metadata, clean dataset export, and before/after quality visualization.
