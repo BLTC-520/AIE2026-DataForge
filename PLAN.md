@@ -89,7 +89,7 @@ Recommended demo dataset:
   - **Action:** Update `package.json` to add `dev:with-convex` script that runs convex dev concurrently with next dev.
   - **Action:** Fix `next-env.d.ts` reference path for Next.js routes.
 
-- [ ] **Step 1.3: Create deterministic demo seed (`lib/dataforge/demo-data.ts`)**
+- [x] **Step 1.3: Create deterministic demo seed (`lib/dataforge/demo-data.ts`)**
   - **Action:** Move class distributions, baseline metrics, final metrics, stage definitions, and seeded animal samples into this file.
   - **Action:** Use Kaggle Animals-10 (`alessiocorrado99/animals10`) as the base dataset if download access is available, then create a curated demo subset rather than using the full dataset raw.
   - **Action:** Include 15 to 30 missing-label samples, 5 to 10 known label issues such as cat images assigned to dogs, and 5 to 10 duplicate or near-duplicate image records.
