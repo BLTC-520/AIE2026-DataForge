@@ -17,12 +17,14 @@
     "openai": "^6.37.0",
     "react": "latest",
     "react-dom": "latest",
+    "three": "^0.184.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "@types/three": "^0.184.1",
     "typescript": "latest"
   }
 }

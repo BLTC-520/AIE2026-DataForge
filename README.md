@@ -71,6 +71,17 @@ npm run start
 4. Watch the pipeline progress through evaluation, labelization, deduplication, balancing, re-evaluation, and export.
 5. Review the quality score improvement, label repair counts, duplicate removals, and class distribution changes.
 
+## Three.js anvil hero (ASCII)
+
+The hero page includes a Three.js **ASCII-rendered** anvil model viewer.
+
+- **Expected model path**: `public/models/Anvil.obj`
+- **If the model is missing**, the hero will show a small inline error explaining where to place it.
+
+To use your existing `Anvil.obj` in the repo root, move/copy it to:
+
+- `public/models/Anvil.obj`
+
 ## Environment Variables
 
 The current prototype should work without provider keys by falling back to deterministic demo data. Local Convex uses the checked-in defaults below:

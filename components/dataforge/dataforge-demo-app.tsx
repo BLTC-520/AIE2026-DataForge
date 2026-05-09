@@ -34,6 +34,7 @@ import { QualityReportPanel } from "./quality-report-panel";
 import { DistributionChart } from "./distribution-chart";
 import { BalancingPanel } from "./balancing-panel";
 import { ExportManifestButton } from "./export-manifest-button";
+import { AnvilAscii } from "./anvil-ascii";
 import { applyLabelDecisions } from "../../lib/dataforge/label-audit";
 import { applyDuplicateDecisions, type DuplicateDecisionAction } from "../../lib/dataforge/duplicates";
 import { calculateDatasetMetrics } from "../../lib/dataforge/metrics";
@@ -1880,6 +1881,10 @@ export function DataForgeDemoApp() {
                 DataForge evaluates an image dataset, explains coverage gaps, generates targeted
                 synthetic samples, and proves the improvement with a second quality pass.
               </p>
+
+              <div className="hero-anvil" aria-hidden="true">
+                <AnvilAscii />
+              </div>
 
               <div className="intent-console" aria-label="Dataset analysis controls">
                 {/* Training-intent textarea removed per design pass; the

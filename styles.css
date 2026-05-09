@@ -302,6 +302,46 @@ h1 {
   font-size: clamp(17px, 2vw, 22px);
 }
 
+.hero-anvil {
+  position: absolute;
+  top: 34px;
+  right: 34px;
+  width: min(320px, 38vw);
+  height: min(260px, 32vw);
+  opacity: 0.92;
+  pointer-events: none;
+  filter: drop-shadow(0 18px 36px rgba(84, 240, 180, 0.18));
+  mix-blend-mode: screen;
+}
+
+.anvil-ascii-canvas {
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  border: 1px solid rgba(84, 240, 180, 0.22);
+  background: linear-gradient(180deg, rgba(7, 9, 9, 0.35), rgba(7, 9, 9, 0));
+  overflow: hidden;
+}
+
+.anvil-ascii-error {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 93, 125, 0.25);
+  color: rgba(242, 240, 220, 0.9);
+  background: rgba(255, 93, 125, 0.08);
+}
+
+.anvil-ascii-error strong,
+.anvil-ascii-error small {
+  display: block;
+}
+
+.anvil-ascii-error small {
+  margin-top: 4px;
+  color: rgba(242, 240, 220, 0.72);
+}
+
 .intent-console {
   width: min(760px, 100%);
   padding: 14px;
