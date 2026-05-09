@@ -13,6 +13,18 @@ The product target is a credible, demo-safe loop:
 7. Re-evaluate the clean labeled dataset with Adaption Labs.
 8. Export the clean labelized dataset, manifest, and report.
 
+30-second judge pitch:
+
+> DataForge turns messy image datasets into training-ready assets. Teams upload a partially labeled dataset, and DataForge uses Adaption Labs to evaluate quality, then helps fix missing labels, wrong labels, duplicates, and class imbalance. The output is a clean labeled dataset plus a report proving the before-and-after improvement. This matters because AI teams always need more high-quality labeled data, and that demand keeps growing every year.
+
+Recommended demo dataset:
+
+- **Base source:** Kaggle Animals-10, `alessiocorrado99/animals10`.
+- **Verdict:** Good fit as a base image-classification dataset because animal classes are visually understandable for judges.
+- **Constraint:** Do not use it raw. Build a controlled demo subset with deliberate defects: missing labels, wrong labels, duplicates, and class imbalance.
+- **Demo subset target:** 4 to 6 classes, around 150 to 300 images total, with a skew such as 90 cats and 20 dogs so balancing is obvious.
+- **Why it works:** The source is realistic enough to feel credible, while the curated corruption makes the two-minute repair loop predictable.
+
 ## Parallel Work Rules
 
 *Objective: Keep Brian, Bazel, and Joseph coding without creating avoidable merge conflicts.*
@@ -46,13 +58,15 @@ The product target is a credible, demo-safe loop:
 
 ---
 
-## Phase 1: Foundation Contracts And App Shell
+## Brian Phases
+
+### Brian Phase 1: Foundation Contracts And App Shell
 
 *Objective: Create the stable contracts and page composition surface that let the three code workstreams proceed independently.*
 
 *Owner: Brian.*
 
-*Blocks: Bazel Phase 2 and Joseph Phase 3.*
+*Blocks: Bazel Phase 1 and Joseph Phase 1.*
 
 - [ ] **Step 1.1: Create shared DataForge directories**
   - **Action:** Create `components/dataforge/` for feature components.
@@ -67,7 +81,9 @@ The product target is a credible, demo-safe loop:
 
 - [ ] **Step 1.3: Create deterministic demo seed (`lib/dataforge/demo-data.ts`)**
   - **Action:** Move class distributions, baseline metrics, final metrics, stage definitions, and seeded animal samples into this file.
+  - **Action:** Use Kaggle Animals-10 (`alessiocorrado99/animals10`) as the base dataset if download access is available, then create a curated demo subset rather than using the full dataset raw.
   - **Action:** Include 15 to 30 missing-label samples, 5 to 10 known label issues such as cat images assigned to dogs, and 5 to 10 duplicate or near-duplicate image records.
+  - **Action:** Create an obvious imbalance, such as 90 cats and 20 dogs, with target balance metadata such as 90 cats and 80 dogs.
   - **Action:** Export pure data only. Do not export React state or UI code from this file.
 
 - [ ] **Step 1.4: Create pipeline state helpers (`lib/dataforge/pipeline.ts`)**
@@ -90,9 +106,51 @@ The product target is a credible, demo-safe loop:
   - **Action:** Fix TypeScript errors before other branches integrate.
   - **Validation:** The existing demo still loads, analyzes, and exports a manifest after the extraction.
 
+### Brian Phase 2: Final Orchestration And Integration
+
+*Objective: Combine Brian, Bazel, and Joseph's work into one deterministic demo flow with no feature branches touching the route entry at the same time.*
+
+*Owner: Brian.*
+
+*Depends on: Bazel Phase 1 and Joseph Phase 1.*
+
+- [ ] **Step B2.1: Import completed feature components into the app shell**
+  - **Action:** Wire `LabelAuditPanel` into the pipeline after baseline evaluation.
+  - **Action:** Wire `QualityReportPanel`, `DistributionChart`, `DuplicateReviewPanel`, `BalancingPanel`, `DatasetExplorer`, and `ExportManifestButton` into the dashboard.
+  - **Constraint:** Keep `app/page.tsx` thin. Use `DataForgeDemoApp` for orchestration.
+
+- [ ] **Step B2.2: Add the labelization, deduplication, and balancing stages to the live pipeline**
+  - **Action:** Update the stage flow to run Upload, Evaluate, Labelize, Deduplicate, Balance, Re-evaluate, Export.
+  - **Action:** Add events such as `labelize.started`, `missing_label.detected`, `label_issue.detected`, `label_decision.approved`, `duplicate.detected`, `duplicate.removed`, `balance_plan.created`, and `labelize.complete`.
+  - **Validation:** The UI can pause after labelization so the presenter can approve completions/corrections before continuing.
+
+- [ ] **Step B2.3: Connect approved label decisions to downstream metrics**
+  - **Action:** Apply Bazel's `applyLabelDecisions` before Joseph's metrics, balancing, Adaption final evaluation, and export helpers run.
+  - **Action:** Make class distribution, missing-label counts, and label issue counts change after approvals.
+  - **Constraint:** Do not auto-apply label decisions on page load. The user must approve them.
+
+- [ ] **Step B2.4: Connect duplicate review, balancing, and Adaption final evaluation to labelized data**
+  - **Action:** Run duplicate review after label review and before balancing.
+  - **Action:** Run Joseph's balancing helpers only after label and duplicate decisions are applied.
+  - **Action:** Ensure Adaption final evaluation receives the clean labelized and deduplicated manifest, not stale original samples.
+  - **Validation:** Manifest contains original, newly labeled, relabeled, duplicate removal, balancing, and Adaption evaluation provenance.
+
+- [ ] **Step B2.5: Demo timing pass**
+  - **Action:** Tune staged delays so the demo feels live but not slow.
+  - **Action:** Make the whole click-through complete in under 2 minutes.
+  - **Constraint:** Keep fallback behavior deterministic so no live provider outage can break the demo.
+
+- [ ] **Step B2.6: Responsive and build validation**
+  - **Action:** Test desktop width around 1440px.
+  - **Action:** Test mobile width around 390px.
+  - **Action:** Run `npm run build`.
+  - **Validation:** No TypeScript errors, no hydration errors, no horizontal page overflow.
+
 ---
 
-## Phase 2: Label Completion And Relabeling Workflow
+## Bazel Phases
+
+### Bazel Phase 1: Label Completion, Relabeling, And Duplicate Review
 
 *Objective: Implement the teammate-requested labeling feature: detect missing labels and likely mislabels, let the user approve completions/corrections, and show labelization improvement.*
 
@@ -147,7 +205,9 @@ The product target is a credible, demo-safe loop:
 
 ---
 
-## Phase 3: Adaption Evaluation, Balancing, Report, And Export Workflow
+## Joseph Phases
+
+### Joseph Phase 1: Adaption Evaluation, Balancing, Report, And Export Workflow
 
 *Objective: Own the Adaption Labs integration contract and the visual proof of improvement: quality cards, before/after charts, class balancing plan, quality report, and export manifest generation.*
 
@@ -211,55 +271,15 @@ The product target is a credible, demo-safe loop:
 
 ---
 
-## Phase 4: Final Orchestration And Integration
+## Slides/Video Phases
 
-*Objective: Combine Brian, Bazel, and Joseph's work into one deterministic demo flow with no feature branches touching the route entry at the same time.*
-
-*Owner: Brian.*
-
-*Depends on: Bazel Phase 2 and Joseph Phase 3.*
-
-- [ ] **Step 4.1: Import completed feature components into the app shell**
-  - **Action:** Wire `LabelAuditPanel` into the pipeline after baseline evaluation.
-  - **Action:** Wire `QualityReportPanel`, `DistributionChart`, `DuplicateReviewPanel`, `BalancingPanel`, `DatasetExplorer`, and `ExportManifestButton` into the dashboard.
-  - **Constraint:** Keep `app/page.tsx` thin. Use `DataForgeDemoApp` for orchestration.
-
-- [ ] **Step 4.2: Add the labelization, deduplication, and balancing stages to the live pipeline**
-  - **Action:** Update the stage flow to run Upload, Evaluate, Labelize, Deduplicate, Balance, Re-evaluate, Export.
-  - **Action:** Add events such as `labelize.started`, `missing_label.detected`, `label_issue.detected`, `label_decision.approved`, `duplicate.detected`, `duplicate.removed`, `balance_plan.created`, and `labelize.complete`.
-  - **Validation:** The UI can pause after labelization so the presenter can approve completions/corrections before continuing.
-
-- [ ] **Step 4.3: Connect approved label decisions to downstream metrics**
-  - **Action:** Apply Bazel's `applyLabelDecisions` before Joseph's metrics, balancing, Adaption final evaluation, and export helpers run.
-  - **Action:** Make class distribution, missing-label counts, and label issue counts change after approvals.
-  - **Constraint:** Do not auto-apply label decisions on page load. The user must approve them.
-
-- [ ] **Step 4.4: Connect duplicate review, balancing, and Adaption final evaluation to labelized data**
-  - **Action:** Run duplicate review after label review and before balancing.
-  - **Action:** Run Joseph's balancing helpers only after label and duplicate decisions are applied.
-  - **Action:** Ensure Adaption final evaluation receives the clean labelized and deduplicated manifest, not stale original samples.
-  - **Validation:** Manifest contains original, newly labeled, relabeled, duplicate removal, balancing, and Adaption evaluation provenance.
-
-- [ ] **Step 4.5: Demo timing pass**
-  - **Action:** Tune staged delays so the demo feels live but not slow.
-  - **Action:** Make the whole click-through complete in under 2 minutes.
-  - **Constraint:** Keep fallback behavior deterministic so no live provider outage can break the demo.
-
-- [ ] **Step 4.6: Responsive and build validation**
-  - **Action:** Test desktop width around 1440px.
-  - **Action:** Test mobile width around 390px.
-  - **Action:** Run `npm run build`.
-  - **Validation:** No TypeScript errors, no hydration errors, no horizontal page overflow.
-
----
-
-## Phase 5: Slides, Video, And Pitch Assets
+### Slides Phase 1: Slides, Video, And Pitch Assets
 
 *Objective: Turn the final product into a clear hackathon story after the demo path is stable.*
 
 *Owner: Slides/video teammate.*
 
-*Depends on: Phase 4 demo flow being mostly stable.*
+*Depends on: Brian Phase 2 demo flow being mostly stable.*
 
 *Owned files: `docs/slides-outline.md`, `docs/demo-script.md`, `docs/video-shot-list.md`, final deck/video files outside the code path.*
 
