@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:with-convex": "sh -c 'npx convex dev & CONVEX_PID=$!; npm run dev; kill $CONVEX_PID'",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
