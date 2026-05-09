@@ -111,7 +111,7 @@ Recommended demo dataset:
   - **Action:** Pass props using shared types only, not feature-specific internal types.
   - **Dependency:** Real components arrive from Bazel and Joseph later.
 
-- [ ] **Step 1.7: Verify foundation build**
+- [x] **Step 1.7: Verify foundation build**
   - **Action:** Run `npm run build`.
   - **Action:** Fix TypeScript errors before other branches integrate.
   - **Validation:** The existing demo still loads, analyzes, and exports a manifest after the extraction.
