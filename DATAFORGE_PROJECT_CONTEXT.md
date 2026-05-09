@@ -44,7 +44,7 @@ The MVP should focus on one clean dataset type: **partially labeled animal image
 
 ## 2. Market Context & Competitive Differentiators
 
-Dataset quality is one of the highest-leverage problems in applied AI. Model architectures change, but data quality remains a bottleneck. Teams spend large amounts of time collecting, labeling, cleaning, deduplicating, balancing, augmenting, and documenting data before any model can be trusted.
+Dataset quality is one of the highest-leverage problems in applied AI. Model architectures change, but data quality remains a bottleneck. Teams spend large amounts of time collecting, labeling, cleaning, deduplicating, balancing, synthesizing, and documenting data before any model can be trusted.
 
 The market has many tools, but they are usually fragmented across the dataset lifecycle.
 

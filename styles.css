@@ -906,6 +906,57 @@ button:disabled {
   color: #d9ddce;
 }
 
+.report-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.report-source {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 8px;
+  border: 1px solid currentColor;
+  text-transform: none;
+}
+
+.source-convex {
+  color: var(--mint);
+}
+
+.source-local {
+  color: var(--violet);
+}
+
+.report-state {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 8px;
+  border: 1px solid currentColor;
+  text-transform: none;
+}
+
+.state-ok {
+  color: var(--mint);
+}
+
+.state-warning {
+  color: var(--amber);
+}
+
+.state-neutral {
+  color: var(--violet);
+}
+
+.fallback-banner {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px dashed var(--amber);
+  color: #ffdca4;
+  background: rgba(255, 188, 66, 0.08);
+}
+
 .chart-panel {
   min-height: 340px;
   padding-bottom: 14px;
@@ -997,6 +1048,148 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+}
+
+.aux-panels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 12px;
+}
+
+.panel-like {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(23, 28, 27, 0.96), rgba(12, 15, 15, 0.96));
+  box-shadow: 0 24px 70px var(--shadow);
+  min-height: 220px;
+}
+
+.relabel-panel,
+.fal-panel {
+  padding: 14px;
+}
+
+.relabel-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.relabel-item {
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0b1010;
+}
+
+.relabel-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.relabel-status {
+  display: inline-flex;
+  padding: 3px 6px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.relabel-status.proposed {
+  border: 1px solid var(--muted);
+  color: var(--muted);
+}
+
+.relabel-status.approved {
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+}
+
+.relabel-status.running {
+  border: 1px solid var(--amber);
+  color: var(--amber);
+}
+
+.relabel-status.complete {
+  border: 1px solid var(--mint);
+  color: var(--mint);
+}
+
+.relabel-status.rejected {
+  border: 1px solid var(--rose);
+  color: var(--rose);
+}
+
+.relabel-status.error {
+  border: 1px solid var(--rose);
+  color: var(--rose);
+}
+
+.relabel-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.relabel-meta strong {
+  color: var(--ink);
+}
+
+.relabel-reason {
+  display: block;
+  margin-top: 8px;
+  color: #d9ddce;
+  font-size: 12px;
+}
+
+.empty-state-relabeled {
+  margin-top: 12px;
+  color: var(--muted);
+}
+
+.empty-state-relabeled strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink);
+}
+
+.fal-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.fal-summary-grid > div {
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: #0b1010;
+}
+
+.fal-summary-grid span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.fal-summary-grid strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--ink);
+  font-size: 18px;
+}
+
+.fal-error {
+  margin: 0;
+  padding: 10px;
+  border-left: 3px solid var(--rose);
+  background: rgba(255, 93, 125, 0.07);
+  color: #ffd2de;
 }
 
 .job-card,
@@ -1256,6 +1449,7 @@ select {
 
   .metric-strip,
   .report-grid,
+  .aux-panels,
   .job-grid {
     grid-template-columns: 1fr;
   }

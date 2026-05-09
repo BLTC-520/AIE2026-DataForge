@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "../styles.css";
+import ConvexClientProvider from "../components/convex-provider";
 
 export const metadata: Metadata = {
   title: "DataForge | Intelligent Dataset Curator",
@@ -14,7 +15,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <ConvexClientProvider>{children}</ConvexClientProvider>
+      </body>
     </html>
   );
 }

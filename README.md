@@ -32,6 +32,7 @@ Instead of claiming model accuracy gains, the demo proves a cleaner loop:
 - React
 - TypeScript
 - CSS
+- OpenAI Responses API for GPT-5.5 repair-plan generation
 - Seeded local demo data and deterministic fallback adapters
 
 ## Getting Started
@@ -70,19 +71,34 @@ npm run start
 
 ## Environment Variables
 
-The current prototype works without provider keys. Future live integrations can use:
+The current prototype works without provider keys. Copy `.env.example` to `.env.local` and fill what you need:
 
 ```env
+CONVEX_DEPLOYMENT=<convex deployment>
 OPENAI_API_KEY=
-FAL_KEY=
+FAL_AI_KEY=
 ADAPTION_LABS_API_KEY=
 ADAPTION_LABS_BASE_URL=
 NEXT_PUBLIC_CONVEX_URL=
+NEXT_PUBLIC_CONVEX_SITE_URL=
 CONVEX_DEPLOY_KEY=
 BLOB_READ_WRITE_TOKEN=
 ```
 
 When keys are missing, the demo should use deterministic fallback behavior so the hackathon flow remains reliable.
+
+## GPT-5.5 Usage
+
+The Analyze Gaps stage calls `POST /api/quality-report`. That server route sends the training intent, class distribution, scenario gaps, and baseline metrics to GPT-5.5 using the OpenAI Responses API with a structured Zod schema.
+
+GPT-5.5 returns:
+
+- measured findings based on the provided evaluation snapshot
+- an actionable repair plan
+- synthetic generation jobs with counts and prompts
+- post-repair summary text and next steps
+
+If the OpenAI request fails or `OPENAI_API_KEY` is missing, the app falls back to the deterministic demo report.
 
 ## Repository Notes
 
